@@ -6,7 +6,10 @@
   "packages": {
     ".": {
       "package-name": "ffl-yahoo-android",
-      "extra-files": ["app/build.gradle.kts"]
+      "extra-files": [
+        "app/build.gradle.kts"
+      ],
+      "initial-version": "0.1.0"
     }
   }
 }
