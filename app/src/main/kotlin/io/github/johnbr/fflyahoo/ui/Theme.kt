@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -14,6 +15,8 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.em
 import io.github.johnbr.fflyahoo.core.present.Present
 
 /** The card's own palette (`--ffl-*` and the slot chips), in both themes. */
@@ -85,6 +88,23 @@ val LocalFfl = staticCompositionLocalOf { LightFfl }
 private val LightScheme: ColorScheme = lightColorScheme(primary = Color(0xFF1B5E20), secondary = Color(0xFF4E6352))
 private val DarkScheme: ColorScheme = darkColorScheme(primary = Color(0xFF8BD58F), secondary = Color(0xFFB5CCB7))
 
+/**
+ * Material's body and label styles carry fixed line heights (24sp for body text), which every smaller
+ * line in the app inherited — a 11sp stat line spaced like a 24sp one, roughly double the air the
+ * card gives it. Proportional line heights keep each line as tall as its own type needs.
+ */
+private val Compact: Typography = Typography().let { t ->
+    fun TextStyle.tight() = copy(lineHeight = 1.3.em)
+    t.copy(
+        bodyLarge = t.bodyLarge.tight(),
+        bodyMedium = t.bodyMedium.tight(),
+        bodySmall = t.bodySmall.tight(),
+        labelLarge = t.labelLarge.tight(),
+        labelMedium = t.labelMedium.tight(),
+        labelSmall = t.labelSmall.tight(),
+    )
+}
+
 @Composable
 fun FflTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
@@ -95,6 +115,6 @@ fun FflTheme(content: @Composable () -> Unit) {
         else -> LightScheme
     }
     CompositionLocalProvider(LocalFfl provides if (dark) DarkFfl else LightFfl) {
-        MaterialTheme(colorScheme = scheme, content = content)
+        MaterialTheme(colorScheme = scheme, typography = Compact, content = content)
     }
 }

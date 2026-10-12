@@ -81,7 +81,7 @@ fun MatchupRowView(
             Modifier
                 .fillMaxWidth()
                 .clickable { onToggle(Panel.ROSTER) }
-                .padding(horizontal = 16.dp, vertical = if (single) 14.dp else 10.dp)
+                .padding(horizontal = 16.dp, vertical = if (single) 10.dp else 7.dp)
                 .semantics {
                     contentDescription = "${row.home.name} ${Present.points(row.home.points)}, ${row.away.name} ${Present.points(row.away.points)}"
                 },
@@ -141,7 +141,7 @@ private fun RowFoot(row: MatchupRow, playsOpen: Boolean, onPlay: () -> Unit) {
     val homeTrend = Present.trend(row.home.liveProjected, row.home.projected)
     val awayTrend = Present.trend(row.away.liveProjected, row.away.projected)
     if (play == null && homeTrend == null && awayTrend == null) return
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 6.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.weight(1f)) { if (play != null && play.side != "away") RowPlay(play, playsOpen, TextAlign.Start, onPlay) }
         Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (homeTrend != null) Text(Present.points(row.home.liveProjected), fontSize = 12.sp, color = trendColor(homeTrend))
@@ -234,7 +234,7 @@ fun Rosters(detail: MatchupDetail) {
         var benchOpen by remember { mutableStateOf(false) }
         Text(
             "${if (benchOpen) "▾" else "▸"} Bench ($benchCount)",
-            Modifier.fillMaxWidth().clickable { benchOpen = !benchOpen }.padding(vertical = 8.dp),
+            Modifier.fillMaxWidth().clickable { benchOpen = !benchOpen }.padding(vertical = 6.dp),
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -250,7 +250,7 @@ private fun Lineup(home: List<PlayerRow>, away: List<PlayerRow>) {
         val h = home.getOrNull(i)
         val a = away.getOrNull(i)
         val slot = h?.slot?.ifEmpty { null } ?: a?.slot ?: ""
-        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.Top) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 1.dp), verticalAlignment = Alignment.Top) {
             PlayerBlock(h, home = true, now, zone, Modifier.weight(1f))
             SlotChip(slot)
             PlayerBlock(a, home = false, now, zone, Modifier.weight(1f))
@@ -265,7 +265,7 @@ private fun SlotChip(slot: String) {
     val color = LocalFfl.current.slot(kind, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurfaceVariant)
     Text(
         slot,
-        Modifier.widthIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 6.dp),
+        Modifier.widthIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 3.dp),
         textAlign = TextAlign.Center,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
@@ -294,7 +294,7 @@ private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: Z
     val align = if (home) Alignment.Start else Alignment.End
     val textAlign = if (home) TextAlign.Start else TextAlign.End
     Row(
-        modifier.clip(RoundedCornerShape(4.dp)).background(bg).padding(horizontal = 4.dp, vertical = 3.dp),
+        modifier.clip(RoundedCornerShape(4.dp)).background(bg).padding(horizontal = 4.dp, vertical = 2.dp),
         horizontalArrangement = if (home) Arrangement.Start else Arrangement.End,
     ) {
         val text = @Composable { m: Modifier ->
@@ -393,7 +393,7 @@ fun History(plays: List<PlayRow>) {
     }
     val ffl = LocalFfl.current
     for (p in plays) {
-        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Text(p.player, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 Text(p.text, fontSize = 12.sp, color = if (p.correction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
