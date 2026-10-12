@@ -1,0 +1,370 @@
+package io.github.johnbr.fflyahoo.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.github.johnbr.fflyahoo.core.present.Present
+import io.github.johnbr.fflyahoo.core.state.MatchupDetail
+import io.github.johnbr.fflyahoo.core.state.MatchupRow
+import io.github.johnbr.fflyahoo.core.state.PlayRow
+import io.github.johnbr.fflyahoo.core.state.PlayerRow
+import io.github.johnbr.fflyahoo.core.state.TeamRow
+import java.time.Instant
+import java.time.ZoneId
+
+/** Which panel a matchup row has open — one at a time, across the whole screen. */
+enum class Panel { ROSTER, PLAYS }
+
+@Composable
+fun trendColor(trend: Present.Trend?): Color = when (trend) {
+    Present.Trend.UP -> LocalFfl.current.up
+    Present.Trend.DOWN -> LocalFfl.current.down
+    Present.Trend.FLAT -> LocalFfl.current.flat
+    null -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+/**
+ * One matchup: home name, both scores, away name; under it the play that last moved THIS score, in
+ * the column of the side that scored it, with both live projections between. Tapping the row opens
+ * the rosters, tapping the play opens the scoring history.
+ */
+@Composable
+fun MatchupRowView(
+    row: MatchupRow,
+    open: Panel?,
+    onToggle: (Panel) -> Unit,
+    detail: MatchupDetail?,
+    history: List<PlayRow>?,
+    single: Boolean = false,
+) {
+    val expandedBg = if (open != null) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
+    Column(Modifier.fillMaxWidth().background(expandedBg)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable { onToggle(Panel.ROSTER) }
+                .padding(horizontal = 16.dp, vertical = if (single) 14.dp else 10.dp)
+                .semantics {
+                    contentDescription = "${row.home.name} ${Present.points(row.home.points)}, ${row.away.name} ${Present.points(row.away.points)}"
+                },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TeamName(row.home, row.leader == row.home.teamId, TextAlign.Start, Modifier.weight(1f))
+            Row(Modifier.padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Score(row.home.points, row.leader == row.home.teamId, row.final)
+                Text(" – ", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                Score(row.away.points, row.leader == row.away.teamId, row.final)
+            }
+            TeamName(row.away, row.leader == row.away.teamId, TextAlign.End, Modifier.weight(1f))
+        }
+        RowFoot(row, open == Panel.PLAYS, onPlay = { onToggle(Panel.PLAYS) })
+        AnimatedVisibility(open != null) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 10.dp)) {
+                when (open) {
+                    Panel.ROSTER -> {
+                        Projections(row)
+                        WinBar(row)
+                        if (detail == null) Loading("Loading rosters…") else Rosters(detail)
+                    }
+                    Panel.PLAYS -> if (history == null) Loading("Loading plays…") else History(history)
+                    null -> {}
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TeamName(team: TeamRow, leader: Boolean, align: TextAlign, modifier: Modifier) {
+    Text(
+        team.name,
+        modifier = modifier,
+        textAlign = align,
+        fontSize = 14.sp,
+        fontWeight = if (leader) FontWeight.Bold else FontWeight.Normal,
+    )
+}
+
+@Composable
+private fun Score(points: Double?, leader: Boolean, final: Boolean) {
+    // Bold for the side ahead, gold once that lead is a result — never mid-game.
+    Text(
+        Present.points(points),
+        fontSize = 15.sp,
+        fontWeight = if (leader) FontWeight.Bold else FontWeight.Medium,
+        color = if (leader && final) LocalFfl.current.winner else MaterialTheme.colorScheme.onSurface,
+        style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
+    )
+}
+
+@Composable
+private fun RowFoot(row: MatchupRow, playsOpen: Boolean, onPlay: () -> Unit) {
+    val play = row.lastPlay
+    val homeTrend = Present.trend(row.home.liveProjected, row.home.projected)
+    val awayTrend = Present.trend(row.away.liveProjected, row.away.projected)
+    if (play == null && homeTrend == null && awayTrend == null) return
+    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
+        Box(Modifier.weight(1f)) { if (play != null && play.side != "away") RowPlay(play, playsOpen, TextAlign.Start, onPlay) }
+        Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (homeTrend != null) Text(Present.points(row.home.liveProjected), fontSize = 12.sp, color = trendColor(homeTrend))
+            if (awayTrend != null) Text(Present.points(row.away.liveProjected), fontSize = 12.sp, color = trendColor(awayTrend))
+        }
+        Box(Modifier.weight(1f), contentAlignment = Alignment.TopEnd) {
+            if (play != null && play.side == "away") RowPlay(play, playsOpen, TextAlign.End, onPlay)
+        }
+    }
+}
+
+@Composable
+private fun RowPlay(play: PlayRow, open: Boolean, align: TextAlign, onClick: () -> Unit) {
+    val color = if (play.correction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    val text = if (play.shortWho.isNotEmpty() && play.shortWhat.isNotEmpty()) "${play.shortWho} · ${play.shortWhat}" else play.shortText.ifEmpty { play.text }
+    Text(
+        text,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (open) MaterialTheme.colorScheme.surfaceContainerHighest else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+            .semantics { contentDescription = "Show scoring play history. Last: $text" },
+        textAlign = align,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        color = color,
+    )
+}
+
+@Composable
+private fun Loading(text: String) {
+    Text(text, Modifier.padding(8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+}
+
+/** "orig X" plus a coloured "proj Y" when the live projection has moved; otherwise just "proj X". */
+@Composable
+private fun Projections(row: MatchupRow) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        ProjectionSide(row.home, Alignment.Start, Modifier.weight(1f))
+        ProjectionSide(row.away, Alignment.End, Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun ProjectionSide(team: TeamRow, align: Alignment.Horizontal, modifier: Modifier) {
+    val live = Present.hasLive(team.liveProjected, team.projected)
+    Column(modifier, horizontalAlignment = align) {
+        Text("${if (live) "orig" else "proj"} ${Present.points(team.projected)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (live) {
+            Text("proj ${Present.points(team.liveProjected)}", fontSize = 12.sp, color = trendColor(Present.trend(team.liveProjected, team.projected)))
+        }
+    }
+}
+
+/** Projected winner, as a split bar: this app's own estimate from the live projections. */
+@Composable
+private fun WinBar(row: MatchupRow) {
+    val p = row.winProb ?: return
+    val home = p.coerceIn(0.0, 1.0)
+    val away = 1 - home
+    val homeFav = home >= away
+    val fav = LocalFfl.current.up
+    val other = MaterialTheme.colorScheme.outlineVariant
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 6.dp).semantics {
+            contentDescription = "${if (homeFav) row.home.name else row.away.name} projected to win, ${Present.percent(maxOf(home, away))}"
+        },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(Present.percent(home), fontSize = 12.sp, fontWeight = if (homeFav) FontWeight.Bold else FontWeight.Normal)
+        Row(Modifier.weight(1f).padding(horizontal = 8.dp).height(6.dp).clip(RoundedCornerShape(3.dp))) {
+            if (home > 0) Box(Modifier.weight(home.toFloat()).height(6.dp).background(if (homeFav) fav else other))
+            if (away > 0) Box(Modifier.weight(away.toFloat()).height(6.dp).background(if (homeFav) other else fav))
+        }
+        Text(Present.percent(away), fontSize = 12.sp, fontWeight = if (homeFav) FontWeight.Normal else FontWeight.Bold)
+    }
+}
+
+/** Both teams facing each other, one shared column of slot chips down the middle, paired by index. */
+@Composable
+fun Rosters(detail: MatchupDetail) {
+    if (detail.sides.size < 2) {
+        Loading("No roster available for this matchup yet.")
+        return
+    }
+    Lineup(detail.sides[0].starters, detail.sides[1].starters)
+    val benchCount = maxOf(detail.sides[0].bench.size, detail.sides[1].bench.size)
+    if (benchCount > 0) {
+        var benchOpen by remember { mutableStateOf(false) }
+        Text(
+            "${if (benchOpen) "▾" else "▸"} Bench ($benchCount)",
+            Modifier.fillMaxWidth().clickable { benchOpen = !benchOpen }.padding(vertical = 8.dp),
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (benchOpen) Lineup(detail.sides[0].bench, detail.sides[1].bench)
+    }
+}
+
+@Composable
+private fun Lineup(home: List<PlayerRow>, away: List<PlayerRow>) {
+    val now = Instant.now()
+    val zone = ZoneId.systemDefault()
+    for (i in 0 until maxOf(home.size, away.size)) {
+        val h = home.getOrNull(i)
+        val a = away.getOrNull(i)
+        val slot = h?.slot?.ifEmpty { null } ?: a?.slot ?: ""
+        Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.Top) {
+            PlayerBlock(h, home = true, now, zone, Modifier.weight(1f))
+            SlotChip(slot)
+            PlayerBlock(a, home = false, now, zone, Modifier.weight(1f))
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    }
+}
+
+@Composable
+private fun SlotChip(slot: String) {
+    val kind = Present.slot(slot)
+    val color = LocalFfl.current.slot(kind, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(
+        slot,
+        Modifier.widthIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 6.dp),
+        textAlign = TextAlign.Center,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Bold,
+        color = color,
+    )
+}
+
+/** A player: name (club) + badges, game line, stat line; points over projection toward the slot chip. */
+@Composable
+private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: ZoneId, modifier: Modifier) {
+    if (player == null) {
+        Spacer(modifier)
+        return
+    }
+    val ffl = LocalFfl.current
+    val bg = if (player.gameState == "in") ffl.liveTint else Color.Transparent
+    val live = Present.hasLive(player.liveProjected, player.projected)
+    val proj = if (live) player.liveProjected else player.projected
+    val game = if (player.gameState == "pre" && player.kickoff != null) {
+        listOf(Present.kickoff(player.kickoff, now, zone), player.game).filter { it.isNotEmpty() }.joinToString(" ")
+    } else {
+        player.game
+    }
+    val pointsColor = if (player.gameState == "post") ffl.winner else MaterialTheme.colorScheme.onSurface
+    val pointsWeight = if (player.gameState == "pre") FontWeight.Medium else FontWeight.Black
+    val align = if (home) Alignment.Start else Alignment.End
+    val textAlign = if (home) TextAlign.Start else TextAlign.End
+    Row(
+        modifier.clip(RoundedCornerShape(4.dp)).background(bg).padding(horizontal = 4.dp, vertical = 3.dp),
+        horizontalArrangement = if (home) Arrangement.Start else Arrangement.End,
+    ) {
+        val text = @Composable { m: Modifier ->
+            Column(m, horizontalAlignment = align) {
+                Text(
+                    buildString {
+                        append(player.shortName.ifEmpty { player.name })
+                        if (player.nflTeam.isNotEmpty()) append(" (${player.nflTeam})")
+                    },
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = textAlign,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (player.status.isNotEmpty()) Badge(player.status, if (player.status in setOf("O", "IR")) ffl.flat else MaterialTheme.colorScheme.error)
+                    if (player.hasBall) Text("🏈", fontSize = 11.sp)
+                    if (player.redZone) Badge("RZ", ffl.redZone, filled = true)
+                }
+                if (game.isNotEmpty()) {
+                    Text(game, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = textAlign)
+                }
+                if (player.statLine.isNotEmpty()) {
+                    Text(player.statLine, fontSize = 11.sp, fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = textAlign)
+                }
+            }
+        }
+        val numbers = @Composable {
+            Column(Modifier.padding(horizontal = 4.dp), horizontalAlignment = if (home) Alignment.End else Alignment.Start) {
+                Text(Present.points(player.points), fontSize = 13.sp, fontWeight = pointsWeight, color = pointsColor)
+                Text(
+                    Present.points(proj),
+                    fontSize = 12.sp,
+                    color = if (live) trendColor(Present.trend(player.liveProjected, player.projected)) else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (home) {
+            text(Modifier.weight(1f))
+            numbers()
+        } else {
+            numbers()
+            text(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+fun Badge(text: String, color: Color, filled: Boolean = false) {
+    Text(
+        text,
+        Modifier
+            .clip(RoundedCornerShape(3.dp))
+            .background(if (filled) color else color.copy(alpha = 0.18f))
+            .padding(horizontal = 3.dp),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        color = if (filled) Color.White else color,
+    )
+}
+
+/** The matchup's scoring history: player, Yahoo's sentence, signed delta. */
+@Composable
+fun History(plays: List<PlayRow>) {
+    if (plays.isEmpty()) {
+        Loading("No scoring plays recorded yet.")
+        return
+    }
+    val ffl = LocalFfl.current
+    for (p in plays) {
+        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                Text(p.player, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                Text(p.text, fontSize = 12.sp, color = if (p.correction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(Present.delta(p.delta), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (p.correction) MaterialTheme.colorScheme.error else ffl.up)
+        }
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+    }
+}

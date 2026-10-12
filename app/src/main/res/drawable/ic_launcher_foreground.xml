@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A football on the 108dp adaptive canvas (66dp safe zone). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:rotation="-35">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M54,30 C72,30 84,42 84,54 C84,66 72,78 54,78 C36,78 24,66 24,54 C24,42 36,30 54,30 Z" />
+        <path
+            android:fillColor="#FF1B5E20"
+            android:pathData="M40,52.5h28v3h-28z M45,48h2.5v12h-2.5z M50.5,48h2.5v12h-2.5z M56,48h2.5v12h-2.5z M61.5,48h2.5v12h-2.5z" />
+    </group>
+</vector>

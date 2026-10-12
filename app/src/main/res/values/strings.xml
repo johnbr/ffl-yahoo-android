@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">FFL Live</string>
+    <string name="widget_name">My matchup</string>
+    <string name="widget_description">Your fantasy matchup\'s live score</string>
+</resources>

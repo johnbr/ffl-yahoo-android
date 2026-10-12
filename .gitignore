@@ -1,0 +1,22 @@
+# Gradle / build
+.gradle/
+.kotlin/
+build/
+local.properties
+captures/
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Signing — the release keystore lives in GitHub secrets, never in the repo
+*.jks
+*.keystore
+keystore.properties
+
+# Local working context
+CLAUDE.md
+.claude/

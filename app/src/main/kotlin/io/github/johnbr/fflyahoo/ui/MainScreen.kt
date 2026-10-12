@@ -1,0 +1,313 @@
+package io.github.johnbr.fflyahoo.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.github.johnbr.fflyahoo.core.engine.LeagueEngine
+import io.github.johnbr.fflyahoo.core.engine.LeagueUi
+import io.github.johnbr.fflyahoo.core.present.Present
+import io.github.johnbr.fflyahoo.core.state.MatchupDetail
+import io.github.johnbr.fflyahoo.core.state.NflPlayRow
+import io.github.johnbr.fflyahoo.core.state.PlayRow
+import io.github.johnbr.fflyahoo.data.AppSettings
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+
+enum class Tab(val label: String) { MINE("My Matchup"), LEAGUE("League"), NFL("NFL") }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MainScreen(settings: AppSettings, ui: LeagueUi?, engine: LeagueEngine?, vm: MainViewModel, onSettings: () -> Unit, onAddLeague: () -> Unit) {
+    val league = settings.selectedLeague ?: return
+    val tabs = if (league.teamId != null) Tab.entries else listOf(Tab.LEAGUE, Tab.NFL)
+    var tab by rememberSaveable(league.leagueId) { mutableStateOf(tabs.first()) }
+    if (tab !in tabs) tab = tabs.first()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { LeagueTitle(settings, ui, vm, onAddLeague) },
+                actions = {
+                    IconButton(onClick = onSettings) { Icon(Icons.Filled.Settings, contentDescription = "Settings") }
+                },
+            )
+        },
+    ) { padding ->
+        Column(Modifier.padding(padding).fillMaxSize()) {
+            PrimaryTabRow(selectedTabIndex = tabs.indexOf(tab)) {
+                tabs.forEach { t -> Tab(selected = t == tab, onClick = { tab = t }, text = { Text(t.label) }) }
+            }
+            ui?.error?.let { ErrorStrip(it, ui.updatedAt) }
+            var refreshing by remember { mutableStateOf(false) }
+            val scope = rememberCoroutineScope()
+            PullToRefreshBox(
+                isRefreshing = refreshing,
+                onRefresh = {
+                    refreshing = true
+                    vm.refresh()
+                    scope.launch {
+                        delay(1200)
+                        refreshing = false
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when {
+                    ui == null || ui.updatedAt == null && ui.error == null -> Centered("Waiting for league data…")
+                    else -> when (tab) {
+                        Tab.MINE -> MyMatchupTab(ui, engine)
+                        Tab.LEAGUE -> LeagueTab(ui, engine)
+                        Tab.NFL -> NflTab(ui, engine)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LeagueTitle(settings: AppSettings, ui: LeagueUi?, vm: MainViewModel, onAddLeague: () -> Unit) {
+    val league = settings.selectedLeague ?: return
+    var menu by remember { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f, fill = false)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    ui?.scoreboard?.leagueName?.ifEmpty { null } ?: league.name,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                IconButton(onClick = { menu = true }) { Icon(Icons.Filled.ArrowDropDown, contentDescription = "Switch or add a league") }
+            }
+            ui?.scoreboard?.week?.let { Text("Week $it", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+        }
+        val live = ui?.scoreboard?.activeGames ?: 0
+        if (live > 0) {
+            Text(
+                "$live live",
+                Modifier.padding(start = 8.dp).clip(RoundedCornerShape(10.dp)).background(LocalFfl.current.live).padding(horizontal = 8.dp, vertical = 2.dp),
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            settings.leagues.forEach { l ->
+                DropdownMenuItem(text = { Text(l.name) }, onClick = {
+                    menu = false
+                    vm.select(l.leagueId)
+                })
+            }
+            HorizontalDivider()
+            DropdownMenuItem(text = { Text("Add a league…") }, onClick = {
+                menu = false
+                onAddLeague()
+            })
+        }
+    }
+}
+
+@Composable
+private fun ErrorStrip(message: String, updatedAt: Double?) {
+    val age = updatedAt?.let { ((System.currentTimeMillis() / 1000.0 - it) / 60).toInt() }
+    Text(
+        if (age != null) "Can't reach Yahoo — showing data from $age min ago." else "Can't reach Yahoo: $message",
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 6.dp),
+        color = MaterialTheme.colorScheme.onErrorContainer,
+        fontSize = 12.sp,
+    )
+}
+
+@Composable
+fun Centered(text: String) {
+    // A LazyColumn so pull-to-refresh still works on an empty screen.
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(32.dp)) {
+        item { Muted(text) }
+    }
+}
+
+/** The open panel and its data, shared by the matchup tabs: one panel open at a time. */
+private class MatchupPanels {
+    var open by mutableStateOf<Pair<String, Panel>?>(null)
+    val details = mutableStateMapOf<String, MatchupDetail>()
+    val histories = mutableStateMapOf<String, List<PlayRow>>()
+
+    fun toggle(matchupId: String, panel: Panel) {
+        open = if (open == matchupId to panel) null else matchupId to panel
+    }
+}
+
+@Composable
+private fun rememberPanels(ui: LeagueUi, engine: LeagueEngine?): MatchupPanels {
+    val panels = remember(ui.leagueId) { MatchupPanels() }
+    val open = panels.open
+    // Fetched when opened, and again silently whenever the data moves (so an open roster's clocks
+    // and points keep up). A refresh never blanks a panel that is already showing.
+    LaunchedEffect(open, ui.updatedAt, ui.scoreboard.liveTick) {
+        val (matchupId, panel) = open ?: return@LaunchedEffect
+        val row = ui.scoreboard.matchups.firstOrNull { it.matchupId == matchupId } ?: return@LaunchedEffect
+        engine ?: return@LaunchedEffect
+        when (panel) {
+            Panel.ROSTER -> panels.details[matchupId] = engine.matchupDetail(row.index)
+            Panel.PLAYS -> panels.histories[matchupId] = engine.playHistory(matchupId)
+        }
+    }
+    return panels
+}
+
+@Composable
+private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?) {
+    val panels = rememberPanels(ui, engine)
+    val mine = ui.myTeam
+    val row = ui.scoreboard.matchups.firstOrNull { it.matchupId == mine?.matchupId } ?: ui.scoreboard.matchups.firstOrNull()
+    LazyColumn(Modifier.fillMaxSize()) {
+        if (row == null) {
+            item { Muted("Waiting for league data…", Modifier.padding(16.dp)) }
+        } else {
+            item {
+                MatchupRowView(
+                    row,
+                    open = panels.open?.takeIf { it.first == row.matchupId }?.second,
+                    onToggle = { panels.toggle(row.matchupId, it) },
+                    detail = panels.details[row.matchupId],
+                    history = panels.histories[row.matchupId],
+                    single = true,
+                )
+            }
+        }
+        footer()
+    }
+}
+
+@Composable
+private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?) {
+    val panels = rememberPanels(ui, engine)
+    LazyColumn(Modifier.fillMaxSize()) {
+        if (ui.scoreboard.partial) item { Muted("Some rosters could not be loaded.", Modifier.padding(horizontal = 16.dp)) }
+        items(ui.scoreboard.matchups, key = { it.matchupId }) { row ->
+            MatchupRowView(
+                row,
+                open = panels.open?.takeIf { it.first == row.matchupId }?.second,
+                onToggle = { panels.toggle(row.matchupId, it) },
+                detail = panels.details[row.matchupId],
+                history = panels.histories[row.matchupId],
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        }
+        footer()
+    }
+}
+
+@Composable
+private fun NflTab(ui: LeagueUi, engine: LeagueEngine?) {
+    val zone = ZoneId.systemDefault()
+    var now by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1000.0) }
+    // Recompose when the soonest banner is due down (the engine publishes on polls, not on the clock).
+    val nextUntil = ui.nfl.games.mapNotNull { Present.banner(it, now)?.until }.minOrNull()
+    LaunchedEffect(nextUntil, ui.updatedAt) {
+        now = System.currentTimeMillis() / 1000.0
+        if (nextUntil != null) {
+            delay(((nextUntil - now) * 1000).toLong().coerceAtLeast(0) + 50)
+            now = System.currentTimeMillis() / 1000.0
+        }
+    }
+    val split = Present.split(ui.nfl.games, Instant.ofEpochSecond(now.toLong()), zone)
+    var laterOpen by rememberSaveable { mutableStateOf(false) }
+    var finalOpen by rememberSaveable { mutableStateOf(false) }
+    var open by rememberSaveable(ui.leagueId) { mutableStateOf<String?>(null) }
+    val plays = remember(ui.leagueId) { mutableStateMapOf<String, List<NflPlayRow>>() }
+    val pulsed = remember { mutableSetOf<String>() }
+    LaunchedEffect(open, ui.updatedAt, ui.nfl.liveTick) {
+        val playsId = open ?: return@LaunchedEffect
+        if (playsId.isEmpty() || engine == null) return@LaunchedEffect
+        plays[playsId] = engine.nflPlays(playsId, 12)
+    }
+
+    LazyColumn(Modifier.fillMaxSize()) {
+        if (ui.nfl.games.isEmpty()) item { Muted("Waiting for the NFL schedule…", Modifier.padding(16.dp)) }
+        fun LazyListScope.games(rows: List<io.github.johnbr.fflyahoo.core.state.NflGameRow>, dim: Boolean = false) {
+            items(rows, key = { "g-" + it.gameId }) { game ->
+                NflGameView(
+                    game, now, pulsed,
+                    open = open == game.playsId && game.playsId.isNotEmpty() || open == "id:" + game.gameId,
+                    onToggle = {
+                        val key = game.playsId.ifEmpty { "id:" + game.gameId }
+                        open = if (open == key) null else key
+                    },
+                    plays = plays[game.playsId],
+                    dimClubs = dim,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            }
+        }
+        games(split.live)
+        games(split.soon)
+        if (split.later.isNotEmpty()) {
+            item(key = "fold-later") { FoldRow("${split.later.size} later this week", laterOpen) { laterOpen = !laterOpen } }
+            if (laterOpen) games(split.later)
+        }
+        if (split.done.isNotEmpty()) {
+            item(key = "fold-final") { FoldRow("${split.done.size} final", finalOpen) { finalOpen = !finalOpen } }
+            if (finalOpen) games(split.done, dim = true)
+        }
+        footer()
+    }
+}
+
+/** Attribution, wherever Yahoo's data is shown. */
+private fun LazyListScope.footer() {
+    item(key = "footer") {
+        Text(
+            "Fantasy data provided by Yahoo Fantasy. Not affiliated with, endorsed by, or sponsored by Yahoo or the NFL.",
+            Modifier.fillMaxWidth().padding(16.dp),
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
