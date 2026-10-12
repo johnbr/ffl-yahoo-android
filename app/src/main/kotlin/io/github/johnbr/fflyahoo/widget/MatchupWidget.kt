@@ -28,6 +28,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import io.github.johnbr.fflyahoo.app
 import io.github.johnbr.fflyahoo.ui.MainActivity
 
 /** Your matchup on the home screen: both scores; on a larger widget, projections and the last play. */
@@ -35,12 +36,25 @@ class MatchupWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(SMALL, MEDIUM))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val snapshot = WidgetSnapshot.read(context)
-        provideContent { GlanceTheme { Content(snapshot) } }
+        val league = context.app.settings.current().selectedLeague
+        var snapshot = WidgetSnapshot.read(context)
+        if (snapshot == null && league?.teamId != null) {
+            // Nothing saved yet (a fresh install, or the app has not polled since): fetch the matchup
+            // now rather than drawing an empty widget.
+            context.app.hub.refreshOnce(league.leagueId)
+            snapshot = context.app.hub.engines.value[league.leagueId]?.state?.value?.let(WidgetSnapshot::of)
+            snapshot?.let { WidgetSnapshot.write(context, it) }
+        }
+        val empty = when {
+            league == null -> "Add your league in FFL Live"
+            league.teamId == null -> "Pick your team in FFL Live"
+            else -> "Couldn't load your matchup — open FFL Live"
+        }
+        provideContent { GlanceTheme { Content(snapshot, empty) } }
     }
 
     @Composable
-    private fun Content(s: WidgetSnapshot?) {
+    private fun Content(s: WidgetSnapshot?, empty: String) {
         val big = LocalSize.current.height >= MEDIUM.height
         Column(
             GlanceModifier
@@ -52,7 +66,7 @@ class MatchupWidget : GlanceAppWidget() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (s == null) {
-                Text("Pick your team in FFL Live", style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp))
+                Text(empty, style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp))
                 return@Column
             }
             if (big) {

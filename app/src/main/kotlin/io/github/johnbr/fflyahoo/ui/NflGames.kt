@@ -5,6 +5,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -65,16 +66,27 @@ fun NflGameView(
     val bg = if (open) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
 
     Column(Modifier.fillMaxWidth().background(bg)) {
-        Column(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 8.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Column(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 6.dp)) {
+            // As the card lays it out: the clubs stack on the left with each score pushed to the end of
+            // that column, and the clock and situation read down a fixed column on the right — the same
+            // width for every game, so the quarters and downs line up down the list like a table. A
+            // kickoff time is end-aligned in it, so the hours finish at the same edge.
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     NflTeamLine(game.away, awayLead, over && awayLead, dimClubs)
                     NflTeamLine(game.home, homeLead, over && homeLead, dimClubs)
                 }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(clock, fontSize = 13.sp, fontWeight = if (game.state == "in") FontWeight.Bold else FontWeight.Normal)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.width(STATUS_WIDTH), horizontalAlignment = if (game.state == "pre") Alignment.End else Alignment.Start) {
+                    Text(
+                        clock,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        fontWeight = if (game.state == "in") FontWeight.Bold else FontWeight.Medium,
+                        color = if (game.state == "in") MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     val situation = Present.situation(game)
-                    if (situation.isNotEmpty()) Text(situation, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (situation.isNotEmpty()) Text(situation, fontSize = 11.sp, maxLines = 1, fontWeight = FontWeight.Medium)
                 }
             }
             Present.fieldFill(game)?.let { fill -> FieldBar(fill, (game.yardsToGoal ?: 100) <= 20) }
@@ -82,7 +94,7 @@ fun NflGameView(
             if (game.lastPlay.isNotEmpty()) {
                 Text(
                     game.lastPlay,
-                    Modifier.padding(top = 4.dp),
+                    Modifier.padding(top = 2.dp),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     fontStyle = if (game.lastPlayProvisional) FontStyle.Italic else FontStyle.Normal,
@@ -106,25 +118,29 @@ fun NflGameView(
 @Composable
 private fun NflTeamLine(side: NflSide, leader: Boolean, won: Boolean, dim: Boolean) {
     val ffl = LocalFfl.current
-    Row(Modifier.padding(vertical = 1.dp), verticalAlignment = Alignment.CenterVertically) {
+    val weight = if (leader) FontWeight.Bold else FontWeight.Medium
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             side.abbr.ifEmpty { side.teamId },
-            Modifier.width(44.dp),
             fontSize = 14.sp,
-            fontWeight = if (leader) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = weight,
             color = if (dim) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
         )
-        if (side.hasBall) Text("🏈 ", fontSize = 12.sp, modifier = Modifier.semantics { contentDescription = "has the ball" })
+        if (side.hasBall) Text("🏈", fontSize = 11.sp, modifier = Modifier.semantics { contentDescription = "has the ball" })
         if (side.redZone) Badge("RZ", ffl.redZone, filled = true)
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.weight(1f))
         Text(
             side.score?.toString() ?: "",
-            fontSize = 14.sp,
-            fontWeight = if (leader) FontWeight.Bold else FontWeight.Normal,
+            fontSize = 15.sp,
+            fontWeight = weight,
             color = if (won) ffl.winner else MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
         )
     }
 }
+
+/** The clock-and-situation column: wide enough for "2nd & goal, Bal 9" and "Mon 8:15 PM". */
+private val STATUS_WIDTH = 116.dp
 
 /** How far the drive has come, offence always left to right. Red inside the 20. */
 @Composable
@@ -177,7 +193,7 @@ private fun ScoreBannerView(gameId: String, banner: ScoreBanner, pulsed: Mutable
 @Composable
 private fun PlayLine(play: NflPlayRow) {
     val color = if (play.provisional) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Text(Present.playWhen(play.period, play.clock), Modifier.width(64.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Column(Modifier.weight(1f)) {
             val prefix = if (play.situation.isNotEmpty()) "${play.situation}  " else ""
@@ -194,7 +210,7 @@ private fun PlayLine(play: NflPlayRow) {
 
 @Composable
 fun Muted(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier.padding(vertical = 8.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(text, modifier.padding(vertical = 6.dp), fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 /** "12 later this week" / "15 final", with a caret that turns when open. */
@@ -202,7 +218,7 @@ fun Muted(text: String, modifier: Modifier = Modifier) {
 fun FoldRow(label: String, open: Boolean, onToggle: () -> Unit) {
     Text(
         "${if (open) "▾" else "▸"}  $label",
-        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(horizontal = 16.dp, vertical = 8.dp),
         fontSize = 13.sp,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
