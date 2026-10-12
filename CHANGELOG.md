@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/johnbr/ffl-yahoo-android/compare/v0.1.1...v0.1.2) (2026-10-12)
+
+
+### Bug Fixes
+
+* no scoring banner for a score that changed while the app wasn't polling ([11b2b9f](https://github.com/johnbr/ffl-yahoo-android/commit/11b2b9ffad16bedae56863b8e27e519d3c54073e))
+* no scoring banner for a score that changed while the app wasn't polling ([0cd12ac](https://github.com/johnbr/ffl-yahoo-android/commit/0cd12ac7e9ed81a01adc69db113b4a810707a965))
+
 ## [0.1.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.1.0...v0.1.1) (2026-10-12)
 
 
