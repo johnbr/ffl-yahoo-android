@@ -68,6 +68,13 @@ class ScoreBanners {
         floors.remove(gameId)
     }
 
+    /** Drop everything seen: the next observation of each game is a baseline again, as at startup. */
+    fun forget() {
+        seen.clear()
+        banners.clear()
+        floors.clear()
+    }
+
     /** `{game_id: banner}` for every banner still up at [now]. */
     fun active(now: Double): Map<String, ScoreBanner> = banners.filterValues { it.until > now }
 

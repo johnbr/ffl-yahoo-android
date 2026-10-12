@@ -97,6 +97,7 @@ class LeagueEngine(
         private set
     private var previous: LeagueSnapshot? = null
     private var interval: Int? = null
+    private var lastPollAt: Double? = null
     var data: LeagueData? = null
         private set
     private var lastError: String? = null
@@ -161,6 +162,16 @@ class LeagueEngine(
     suspend fun refresh(): Int = withContext(dispatcher) {
         val now = clock()
         val fresh = source.refreshOrStale(now)
+        // Not in the Python, which never stops polling: a poll that comes long after it was due (the
+        // app was off screen, live mode off) re-baselines the games-feed trackers, as a restart does.
+        // Otherwise everything that happened in the gap reads as one change at this moment — a
+        // touchdown from minutes ago raised as a fresh banner, two field goals summed into one.
+        val due = lastPollAt?.let { it + (interval ?: 0) + GAP_GRACE_SECONDS }
+        if (due != null && now > due) {
+            banners.forget()
+            pending.forgetOthers(emptySet())
+        }
+        lastPollAt = now
         processPlays(fresh, now)
         observeBanners(fresh, now)
         refreshNflLastPlays(fresh, now)
@@ -422,6 +433,9 @@ class LeagueEngine(
 
         /** How often a game's play feed is re-read between polls while a snap's text is awaited. */
         const val CHASE_SECONDS = 3.0
+
+        /** How late a poll may be (past its interval) before it is treated as coming after a gap. */
+        const val GAP_GRACE_SECONDS = 30
 
         /** The retry cadence when the very first refresh fails. */
         const val RETRY_SECONDS = 60
