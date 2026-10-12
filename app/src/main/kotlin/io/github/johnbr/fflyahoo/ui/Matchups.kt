@@ -22,6 +22,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import io.github.johnbr.fflyahoo.core.present.Present
 import io.github.johnbr.fflyahoo.core.state.MatchupDetail
@@ -292,20 +299,7 @@ private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: Z
     ) {
         val text = @Composable { m: Modifier ->
             Column(m, horizontalAlignment = align) {
-                Text(
-                    buildString {
-                        append(player.shortName.ifEmpty { player.name })
-                        if (player.nflTeam.isNotEmpty()) append(" (${player.nflTeam})")
-                    },
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    textAlign = textAlign,
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (player.status.isNotEmpty()) Badge(player.status, if (player.status in setOf("O", "IR")) ffl.flat else MaterialTheme.colorScheme.error)
-                    if (player.hasBall) Text("🏈", fontSize = 11.sp)
-                    if (player.redZone) Badge("RZ", ffl.redZone, filled = true)
-                }
+                PlayerName(player, textAlign)
                 if (game.isNotEmpty()) {
                     Text(game, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = textAlign)
                 }
@@ -334,6 +328,46 @@ private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: Z
     }
 }
 
+/**
+ * "D. Samuel Sr. (SF)" with its badges — injury status, 🏈, RZ — on the same line, right after the
+ * name, the way the card prints them. The badges are inline content of the name's own text, so a name
+ * that wraps carries them along to its last line rather than leaving them a row of their own; the
+ * club is joined by a no-break space so "(SF)" never strands alone.
+ */
+@Composable
+private fun PlayerName(player: PlayerRow, textAlign: TextAlign) {
+    val ffl = LocalFfl.current
+    val badges = buildList {
+        if (player.status.isNotEmpty()) {
+            add(InlineBadge("status", player.status, if (player.status in setOf("O", "IR")) ffl.flat else MaterialTheme.colorScheme.error, filled = false))
+        }
+        if (player.hasBall) add(InlineBadge("ball", "🏈", Color.Unspecified, filled = false))
+        if (player.redZone) add(InlineBadge("rz", "RZ", ffl.redZone, filled = true))
+    }
+    val text = buildAnnotatedString {
+        append(player.shortName.ifEmpty { player.name })
+        if (player.nflTeam.isNotEmpty()) append("\u00a0(${player.nflTeam})")
+        // A no-break space before each badge: when the line is full, the break comes inside the
+        // name ("D. Samuel" / "Sr. (SF) Q"), never between the club and its badge.
+        badges.forEach {
+            append('\u00a0')
+            appendInlineContent(it.id, it.text)
+        }
+    }
+    val inline = badges.associate { badge ->
+        // Sized in ems of the 13sp name: the 10sp bold label plus its padding.
+        val width = if (badge.id == "ball") 1.1f else 0.5f + 0.5f * badge.text.length
+        badge.id to InlineTextContent(Placeholder(width.em, 1.1.em, PlaceholderVerticalAlign.TextCenter)) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                if (badge.id == "ball") Text("🏈", fontSize = 10.sp, lineHeight = 12.sp) else Badge(badge.text, badge.color, badge.filled)
+            }
+        }
+    }
+    Text(text, inlineContent = inline, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = textAlign)
+}
+
+private data class InlineBadge(val id: String, val text: String, val color: Color, val filled: Boolean)
+
 @Composable
 fun Badge(text: String, color: Color, filled: Boolean = false) {
     Text(
@@ -343,6 +377,8 @@ fun Badge(text: String, color: Color, filled: Boolean = false) {
             .background(if (filled) color else color.copy(alpha = 0.18f))
             .padding(horizontal = 3.dp),
         fontSize = 10.sp,
+        // Its own line height: the inherited body style's 24sp would clip a badge drawn inline.
+        lineHeight = 12.sp,
         fontWeight = FontWeight.Bold,
         color = if (filled) Color.White else color,
     )

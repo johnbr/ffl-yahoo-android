@@ -87,9 +87,10 @@ class WidgetUpdater(
                 .map { ui -> ui?.let(WidgetSnapshot::of) }
                 .distinctUntilChanged()
                 .collect { snapshot ->
-                    if (!hasWidgets()) return@collect
+                    // Written whether or not a widget exists yet: one added later reads this file on
+                    // its first draw, and nothing else would tell it the score until the next change.
                     withContext(Dispatchers.IO) { WidgetSnapshot.write(context, snapshot) }
-                    MatchupWidget().updateAll(context)
+                    if (hasWidgets()) MatchupWidget().updateAll(context)
                 }
         }
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
