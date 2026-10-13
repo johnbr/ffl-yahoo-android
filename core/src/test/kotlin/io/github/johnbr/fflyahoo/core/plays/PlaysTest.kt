@@ -292,10 +292,44 @@ class PlaysTest {
         newPoints: Double = delta,
         correction: Boolean = false,
         playFloor: Int? = null,
+        oldPoints: Double = 0.0,
     ) = ScoringEvent(
-        eventId, 2, at, playerKey, playerName, "802904.t.1", "w2.m1", "LAR", "WR", delta, 0.0, newPoints, true, correction,
+        eventId, 2, at, playerKey, playerName, "802904.t.1", "w2.m1", "LAR", "WR", delta, oldPoints, newPoints, true, correction,
         play = play, statDelta = stat, playFloor = playFloor,
     )
+
+    @Test
+    fun `a play walked back by a correction is no last play`() {
+        // Coleman's 3-yard catch went 0.00 -> 1.30, and the pass interference on the snap took it back.
+        val feed = PlayFeed()
+        feed.add(listOf(piece("e0", 90.0, 4.0, "40 Rec Yds", playerKey = "p.other", playerName = "Other Guy")))
+        feed.add(listOf(piece("e1", 100.0, 1.3, "1 Rec, 3 Rec Yds")))
+        feed.add(listOf(piece("e2", 110.0, -1.3, "-1 Rec, -3 Rec Yds", correction = true, oldPoints = 1.3, newPoints = 0.0)))
+
+        assertEquals("e0", feed.lastPlay()?.eventId, "the wiped catch is not a last play")
+        assertEquals(listOf("e0"), feed.recent(5).map { it.eventId })
+        assertEquals(listOf("e2", "e1", "e0"), feed.recent(5, includeCorrections = true).map { it.eventId })
+
+        feed.add(listOf(piece("e3", 120.0, 7.7, "1 Rec, 7 Rec Yds, 1 Rec TD")))
+        assertEquals("e3", feed.lastPlay()?.eventId)
+    }
+
+    @Test
+    fun `a partial correction leaves the play`() {
+        val feed = PlayFeed()
+        feed.add(listOf(piece("e1", 100.0, 7.4, "1 Rec, 64 Rec Yds")))
+        feed.add(listOf(piece("e2", 110.0, -0.1, "-1 Rec Yds", correction = true, oldPoints = 7.4, newPoints = 7.3)))
+        assertEquals("e1", feed.lastPlay()?.eventId)
+    }
+
+    @Test
+    fun `a correction undoes only the plays it covers`() {
+        val feed = PlayFeed()
+        feed.add(listOf(piece("e1", 100.0, 1.3, "1 Rec, 3 Rec Yds")))
+        feed.add(listOf(piece("e2", 110.0, 6.4, "4 Rec Yds, 1 Rec TD", oldPoints = 1.3, newPoints = 7.7)))
+        feed.add(listOf(piece("e3", 120.0, -6.4, "-4 Rec Yds, -1 Rec TD", correction = true, oldPoints = 7.7, newPoints = 1.3)))
+        assertEquals(listOf("e1"), feed.recent(5).map { it.eventId })
+    }
 
     @Test
     fun `a later piece of the same play joins its row`() {
