@@ -29,7 +29,8 @@ leagues work too.
   - It starts itself shortly before kickoff and stops when the games are over.
   - It sends alerts for *my player scored*, *opponent scored* and *lead changed*.
   - A notification is updated in place when the play's text lands.
-- **Home-screen widget.** Your matchup's score, plus projections and the last play on a larger widget.
+- **Home-screen widget.** Your matchup: both scores and live projections, with the decimal points lined
+  up, and the last play. Two rows tall, it adds the league and the number of live games.
 - **Several leagues.** Switch from the title bar.
 
 ## How it gets the data
