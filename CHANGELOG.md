@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.4.0...v0.4.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* line up the widget's decimal points in any font ([#15](https://github.com/johnbr/ffl-yahoo-android/issues/15)) ([b0036db](https://github.com/johnbr/ffl-yahoo-android/commit/b0036dbd51201418bd7b0c92308bc9f3de0a9e94))
+
 ## [0.4.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.3.0...v0.4.0) (2026-10-13)
 
 
