@@ -99,6 +99,14 @@ object Present {
         return Split(live, soon, pre - soon.toSet(), done)
     }
 
+    /** The games in progress (or delayed mid-game) that involve one of [clubs], feed order. */
+    fun liveGamesFor(rows: List<NflGameRow>, clubs: Set<String>): List<NflGameRow> {
+        val wanted = clubs.mapTo(HashSet()) { it.uppercase() }
+        return rows.filter { game ->
+            game.state in setOf("in", "delayed") && (game.away.abbr.uppercase() in wanted || game.home.abbr.uppercase() in wanted)
+        }
+    }
+
     /** A game's scoring banner, if one is still up at [now] (epoch seconds). */
     fun banner(game: NflGameRow, now: Double): ScoreBanner? = game.scoreBanner?.takeIf { it.kind.isNotEmpty() && it.until > now }
 
