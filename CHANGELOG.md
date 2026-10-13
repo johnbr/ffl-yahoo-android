@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.2.0...v0.3.0) (2026-10-13)
+
+
+### Features
+
+* projections and the last play on a one-row widget, decimals aligned ([#11](https://github.com/johnbr/ffl-yahoo-android/issues/11)) ([ecbc763](https://github.com/johnbr/ffl-yahoo-android/commit/ecbc763cdb1c1b01ef37314cb321ed88ef8e8cf0))
+
 ## [0.2.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.1.2...v0.2.0) (2026-10-13)
 
 
