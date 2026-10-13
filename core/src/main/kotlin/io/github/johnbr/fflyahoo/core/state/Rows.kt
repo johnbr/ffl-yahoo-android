@@ -16,6 +16,8 @@ data class TeamRow(
     val projected: Double?,
     val liveProjected: Double?,
     val remaining: Int?,
+    /** `0-4`, printed after the name: "Tesla (0-4)". */
+    val record: String? = null,
 )
 
 @Serializable
@@ -85,6 +87,7 @@ data class RosterSide(
     val remaining: Int?,
     val starters: List<PlayerRow>,
     val bench: List<PlayerRow>,
+    val record: String? = null,
 )
 
 @Serializable

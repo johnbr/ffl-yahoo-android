@@ -49,6 +49,8 @@ data class Team(
     val remaining: Int? = null,
     /** Sum of squares of the starters' still-to-come projections — the win probability's spread. */
     val remainingVar: Double = 0.0,
+    /** The season's record going into this week, `3-1` (`3-1-1` with a tie); null when the tier has none. */
+    val record: String? = null,
 )
 
 /** Both sides of one head-to-head matchup, with full rosters. `teams.first` is home. */
