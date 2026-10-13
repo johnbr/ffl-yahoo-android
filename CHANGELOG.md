@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.4.1...v0.5.0) (2026-10-13)
+
+
+### Features
+
+* show each team's season record after its name ([#17](https://github.com/johnbr/ffl-yahoo-android/issues/17)) ([c24ae12](https://github.com/johnbr/ffl-yahoo-android/commit/c24ae12e2478eafc9fe7a21fa118e9c9aa7a0e10))
+
 ## [0.4.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.4.0...v0.4.1) (2026-10-13)
 
 
