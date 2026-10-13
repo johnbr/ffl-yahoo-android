@@ -30,7 +30,8 @@ leagues work too.
   - It sends alerts for *my player scored*, *opponent scored* and *lead changed*.
   - A notification is updated in place when the play's text lands.
 - **Home-screen widget.** Your matchup: both scores and live projections (green above the morning's
-  projection, red below), with the decimal points lined up, and the last play. Two rows tall, it adds the league and the number of live games.
+  projection, red below), with the decimal points lined up, and the last play. The winner turns gold
+  once the matchup is over. Two rows tall, it adds the league and the number of live games.
 - **Several leagues.** Switch from the title bar.
 
 ## How it gets the data
