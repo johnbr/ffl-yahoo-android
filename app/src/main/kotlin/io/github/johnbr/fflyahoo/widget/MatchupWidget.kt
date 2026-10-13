@@ -75,7 +75,8 @@ class MatchupWidget : GlanceAppWidget() {
     private fun Content(s: WidgetSnapshot?, empty: String) {
         val size = LocalSize.current
         val tall = size.height >= MEDIUM.height
-        val projections = size.width >= WIDE.width
+        // A finished matchup's projections are just its scores again.
+        val projections = size.width >= WIDE.width && !(s?.final ?: false)
         val lastPlay = size.height >= ROW.height
         Column(
             GlanceModifier
@@ -109,8 +110,9 @@ class MatchupWidget : GlanceAppWidget() {
     }
 
     /**
-     * One team: the name, then its projection and its points, each right-aligned in a column as wide as
-     * the wider of the two teams' figures, so the decimal points line up down the widget.
+     * One team: the name, then its projection and its points. Each figure is split at its decimal point
+     * into a right-aligned whole part and a left-aligned fraction, in columns as wide as the wider of the
+     * two teams' parts, so the decimal points line up whatever the font's digit widths.
      */
     @Composable
     private fun TeamLine(name: String, points: String, projected: String, trend: String, ahead: Boolean, behind: Boolean, final: Boolean, projections: Boolean, columns: Columns) {
@@ -120,34 +122,41 @@ class MatchupWidget : GlanceAppWidget() {
             Text(
                 name,
                 GlanceModifier.defaultWeight(),
-                style = TextStyle(color = if (won) WINNER else GlanceTheme.colors.onSurface, fontSize = NAME_SIZE, fontWeight = if (ahead) FontWeight.Bold else FontWeight.Normal),
-                maxLines = 1,
-            )
-            if (projections) {
-                Text(
-                    projected,
-                    GlanceModifier.width(columns.projected).padding(start = 8.dp),
-                    style = TextStyle(color = trendColor(trend), fontSize = PROJECTED_SIZE, textAlign = TextAlign.End),
-                    maxLines = 1,
-                )
-            }
-            // Both scores in the same weight: bold digits are wider, and would push the decimal points apart.
-            Text(
-                points,
-                GlanceModifier.width(columns.points).padding(start = 8.dp),
                 style = TextStyle(
-                    color = when {
-                        won -> WINNER
-                        behind -> GlanceTheme.colors.onSurfaceVariant
-                        else -> GlanceTheme.colors.onSurface
-                    },
-                    fontSize = POINTS_SIZE,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.End,
+                    color = if (won) WINNER else GlanceTheme.colors.onSurface,
+                    // Bold is as heavy as a widget's text gets; the winner's name is a size up as well.
+                    fontSize = if (won) WINNER_NAME_SIZE else NAME_SIZE,
+                    fontWeight = if (ahead) FontWeight.Bold else FontWeight.Normal,
                 ),
                 maxLines = 1,
             )
+            if (projections) Figure(projected, columns.projected, trendColor(trend), PROJECTED_SIZE, FontWeight.Normal)
+            // Both scores in the same weight: bold digits are wider, and would push the decimal points apart.
+            val pointsColor = when {
+                won -> WINNER
+                behind -> GlanceTheme.colors.onSurfaceVariant
+                else -> GlanceTheme.colors.onSurface
+            }
+            Figure(points, columns.points, pointsColor, POINTS_SIZE, FontWeight.Bold)
         }
+    }
+
+    /** A figure as two cells: the whole part right-aligned, then the decimal point and fraction left-aligned. */
+    @Composable
+    private fun Figure(text: String, cells: Cells, color: ColorProvider, size: TextUnit, weight: FontWeight) {
+        val (whole, fraction) = split(text)
+        Text(
+            whole,
+            GlanceModifier.width(cells.whole).padding(start = GAP),
+            style = TextStyle(color = color, fontSize = size, fontWeight = weight, textAlign = TextAlign.End),
+            maxLines = 1,
+        )
+        Text(
+            fraction,
+            GlanceModifier.width(cells.fraction),
+            style = TextStyle(color = color, fontSize = size, fontWeight = weight, textAlign = TextAlign.Start),
+            maxLines = 1,
+        )
     }
 
     /** A live projection against the morning's, coloured as the app colours it: above green, below red. */
@@ -159,21 +168,25 @@ class MatchupWidget : GlanceAppWidget() {
         else -> GlanceTheme.colors.onSurfaceVariant
     }
 
-    /** The two number columns' widths, measured in the widget's own font at the user's font scale. */
-    private class Columns(val points: Dp, val projected: Dp) {
+    /** The widths of one figure's two cells. */
+    private class Cells(val whole: Dp, val fraction: Dp)
+
+    /** Both figures' columns, measured in the widget's own font at the user's font scale. */
+    private class Columns(val points: Cells, val projected: Cells) {
         companion object {
             fun measure(context: Context, points: List<String>, projected: List<String>): Columns {
                 val metrics = context.resources.displayMetrics
-                fun width(texts: List<String>, size: TextUnit, bold: Boolean): Dp {
+                fun column(texts: List<String>, size: TextUnit, bold: Boolean): Cells {
                     val paint = Paint().apply {
                         textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, size.value, metrics)
                         typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
                     }
-                    val px = texts.maxOf { paint.measureText(it) }
-                    // Plus the 8dp gap before the column, and a little slack for rounding.
-                    return (px / metrics.density).dp + 10.dp
+                    fun widest(parts: List<String>) = (parts.maxOf { paint.measureText(it) } / metrics.density).dp
+                    val split = texts.map(::split)
+                    // A little slack on each cell for rounding; the gap goes before the whole part.
+                    return Cells(widest(split.map { it.first }) + GAP + 2.dp, widest(split.map { it.second }) + 2.dp)
                 }
-                return Columns(width(points, POINTS_SIZE, bold = true), width(projected, PROJECTED_SIZE, bold = false))
+                return Columns(column(points, POINTS_SIZE, bold = true), column(projected, PROJECTED_SIZE, bold = false))
             }
         }
     }
@@ -196,10 +209,18 @@ class MatchupWidget : GlanceAppWidget() {
         private val DOWN = ColorProvider(day = Color(0xFFC62828), night = Color(0xFFEF5350))
         private val WINNER = ColorProvider(day = Color(0xFFB8860B), night = Color(0xFFFBC02D))
 
+        private val GAP = 8.dp
         private val NAME_SIZE = 14.sp
+        private val WINNER_NAME_SIZE = 15.sp
         private val PROJECTED_SIZE = 12.sp
         private val POINTS_SIZE = 16.sp
     }
+}
+
+/** `126.26` -> `126` and `.26`; a figure with no decimal point (the `—` placeholder) is all whole part. */
+private fun split(text: String): Pair<String, String> {
+    val dot = text.indexOf('.')
+    return if (dot < 0) text to "" else text.substring(0, dot) to text.substring(dot)
 }
 
 class MatchupWidgetReceiver : GlanceAppWidgetReceiver() {
