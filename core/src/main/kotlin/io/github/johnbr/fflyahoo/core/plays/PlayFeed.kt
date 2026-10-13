@@ -143,6 +143,10 @@ class PlayFeed(private val maxlen: Int = Plays.DEFAULT_HISTORY) {
     /**
      * Most recent events first. [startersOnly] drops bench and IR players; [nflTeams] restricts to
      * players on those clubs (`null` means no restriction — what an unavailable games feed falls back to).
+     *
+     * Without [includeCorrections] a play that a later correction walked all the way back is left out
+     * too — a catch wiped off by a penalty on the same snap reaches the stat feed and is then taken
+     * away (2026-10-12, Keon Coleman, Buf at LAR). The record, with corrections, keeps both.
      */
     fun recent(
         limit: Int = 10,
@@ -153,8 +157,11 @@ class PlayFeed(private val maxlen: Int = Plays.DEFAULT_HISTORY) {
         nflTeams: Set<String>? = null,
     ): List<ScoringEvent> {
         val out = ArrayList<ScoringEvent>()
+        // Per player, the point ranges later corrections walked back.
+        val undone = HashMap<String, MutableList<ClosedFloatingPointRange<Double>>>()
         for (event in events.asReversed()) {
-            if (!includeCorrections && event.correction) continue
+            if (event.correction) undone.getOrPut(event.playerKey) { ArrayList() } += event.newPoints..event.oldPoints
+            if (!includeCorrections && (event.correction || walkedBack(event, undone))) continue
             if (startersOnly && !event.starter) continue
             if (nflTeams != null && (event.nflTeam ?: "") !in nflTeams) continue
             if (matchupId != null && event.matchupId != matchupId) continue
@@ -163,6 +170,12 @@ class PlayFeed(private val maxlen: Int = Plays.DEFAULT_HISTORY) {
             if (out.size >= limit) break
         }
         return out
+    }
+
+    /** Whether a later correction took back every point [event] gained. */
+    private fun walkedBack(event: ScoringEvent, undone: Map<String, List<ClosedFloatingPointRange<Double>>>): Boolean {
+        if (event.delta <= 0) return false
+        return undone[event.playerKey].orEmpty().any { it.start <= event.oldPoints + 0.005 && it.endInclusive >= event.newPoints - 0.005 }
     }
 
     fun lastPlay(
