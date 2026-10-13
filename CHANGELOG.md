@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.3.0...v0.4.0) (2026-10-13)
+
+
+### Features
+
+* colour the widget's projections, gold winner, and a widget that keeps up ([#13](https://github.com/johnbr/ffl-yahoo-android/issues/13)) ([9a8c215](https://github.com/johnbr/ffl-yahoo-android/commit/9a8c215dfa00e8635b2680001b3b71607c0d8c43))
+
 ## [0.3.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.2.0...v0.3.0) (2026-10-13)
 
 
