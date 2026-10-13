@@ -29,6 +29,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -49,6 +50,7 @@ import io.github.johnbr.fflyahoo.core.engine.LeagueEngine
 import io.github.johnbr.fflyahoo.core.engine.LeagueUi
 import io.github.johnbr.fflyahoo.core.present.Present
 import io.github.johnbr.fflyahoo.core.state.MatchupDetail
+import io.github.johnbr.fflyahoo.core.state.NflGameRow
 import io.github.johnbr.fflyahoo.core.state.NflPlayRow
 import io.github.johnbr.fflyahoo.core.state.PlayRow
 import io.github.johnbr.fflyahoo.data.AppSettings
@@ -206,6 +208,10 @@ private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?) {
     val panels = rememberPanels(ui, engine)
     val mine = ui.myTeam
     val row = ui.scoreboard.matchups.firstOrNull { it.matchupId == mine?.matchupId } ?: ui.scoreboard.matchups.firstOrNull()
+    // Under the matchup, the games its starters are playing in right now, as the NFL tab shows them.
+    val live = Present.liveGamesFor(ui.nfl.games, ui.myClubs)
+    val now = rememberBannerClock(live, ui.updatedAt)
+    val games = rememberNflPanels(ui, engine)
     LazyColumn(Modifier.fillMaxSize()) {
         if (row == null) {
             item { Muted("Waiting for league data…", Modifier.padding(16.dp)) }
@@ -220,6 +226,18 @@ private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?) {
                     single = true,
                 )
             }
+        }
+        if (live.isNotEmpty()) {
+            item(key = "live-heading") {
+                Text(
+                    "Live NFL games",
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 2.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+            }
+            nflGames(live, now, games)
         }
         footer()
     }
@@ -247,56 +265,80 @@ private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?) {
 @Composable
 private fun NflTab(ui: LeagueUi, engine: LeagueEngine?) {
     val zone = ZoneId.systemDefault()
+    val now = rememberBannerClock(ui.nfl.games, ui.updatedAt)
+    val split = Present.split(ui.nfl.games, Instant.ofEpochSecond(now.toLong()), zone)
+    var laterOpen by rememberSaveable { mutableStateOf(false) }
+    var finalOpen by rememberSaveable { mutableStateOf(false) }
+    val panels = rememberNflPanels(ui, engine)
+
+    LazyColumn(Modifier.fillMaxSize()) {
+        if (ui.nfl.games.isEmpty()) item { Muted("Waiting for the NFL schedule…", Modifier.padding(16.dp)) }
+        nflGames(split.live, now, panels)
+        nflGames(split.soon, now, panels)
+        if (split.later.isNotEmpty()) {
+            item(key = "fold-later") { FoldRow("${split.later.size} later this week", laterOpen) { laterOpen = !laterOpen } }
+            if (laterOpen) nflGames(split.later, now, panels)
+        }
+        if (split.done.isNotEmpty()) {
+            item(key = "fold-final") { FoldRow("${split.done.size} final", finalOpen) { finalOpen = !finalOpen } }
+            if (finalOpen) nflGames(split.done, now, panels, dim = true)
+        }
+        footer()
+    }
+}
+
+/** The clock the banners are drawn against: it ticks when the soonest one is due down, and on each poll. */
+@Composable
+private fun rememberBannerClock(games: List<NflGameRow>, updatedAt: Double?): Double {
     var now by remember { mutableDoubleStateOf(System.currentTimeMillis() / 1000.0) }
-    // Recompose when the soonest banner is due down (the engine publishes on polls, not on the clock).
-    val nextUntil = ui.nfl.games.mapNotNull { Present.banner(it, now)?.until }.minOrNull()
-    LaunchedEffect(nextUntil, ui.updatedAt) {
+    // The engine publishes on polls, not on the clock, so a banner's end needs its own recomposition.
+    val nextUntil = games.mapNotNull { Present.banner(it, now)?.until }.minOrNull()
+    LaunchedEffect(nextUntil, updatedAt) {
         now = System.currentTimeMillis() / 1000.0
         if (nextUntil != null) {
             delay(((nextUntil - now) * 1000).toLong().coerceAtLeast(0) + 50)
             now = System.currentTimeMillis() / 1000.0
         }
     }
-    val split = Present.split(ui.nfl.games, Instant.ofEpochSecond(now.toLong()), zone)
-    var laterOpen by rememberSaveable { mutableStateOf(false) }
-    var finalOpen by rememberSaveable { mutableStateOf(false) }
-    var open by rememberSaveable(ui.leagueId) { mutableStateOf<String?>(null) }
-    val plays = remember(ui.leagueId) { mutableStateMapOf<String, List<NflPlayRow>>() }
-    val pulsed = remember { mutableSetOf<String>() }
-    LaunchedEffect(open, ui.updatedAt, ui.nfl.liveTick) {
-        val playsId = open ?: return@LaunchedEffect
-        if (playsId.isEmpty() || engine == null) return@LaunchedEffect
-        plays[playsId] = engine.nflPlays(playsId, 12)
-    }
+    return now
+}
 
-    LazyColumn(Modifier.fillMaxSize()) {
-        if (ui.nfl.games.isEmpty()) item { Muted("Waiting for the NFL schedule…", Modifier.padding(16.dp)) }
-        fun LazyListScope.games(rows: List<io.github.johnbr.fflyahoo.core.state.NflGameRow>, dim: Boolean = false) {
-            items(rows, key = { "g-" + it.gameId }) { game ->
-                NflGameView(
-                    game, now, pulsed,
-                    open = open == game.playsId && game.playsId.isNotEmpty() || open == "id:" + game.gameId,
-                    onToggle = {
-                        val key = game.playsId.ifEmpty { "id:" + game.gameId }
-                        open = if (open == key) null else key
-                    },
-                    plays = plays[game.playsId],
-                    dimClubs = dim,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            }
-        }
-        games(split.live)
-        games(split.soon)
-        if (split.later.isNotEmpty()) {
-            item(key = "fold-later") { FoldRow("${split.later.size} later this week", laterOpen) { laterOpen = !laterOpen } }
-            if (laterOpen) games(split.later)
-        }
-        if (split.done.isNotEmpty()) {
-            item(key = "fold-final") { FoldRow("${split.done.size} final", finalOpen) { finalOpen = !finalOpen } }
-            if (finalOpen) games(split.done, dim = true)
-        }
-        footer()
+/** The open game and the plays fetched for it, shared by the lists of NFL games: one open at a time. */
+private class NflPanels(private val openKey: MutableState<String?>) {
+    val plays = mutableStateMapOf<String, List<NflPlayRow>>()
+    /** Games whose banner has already pulsed, so a recomposition doesn't pulse it again. */
+    val pulsed = mutableSetOf<String>()
+    val open: String? get() = openKey.value
+
+    private fun key(game: NflGameRow) = game.playsId.ifEmpty { "id:" + game.gameId }
+    fun isOpen(game: NflGameRow) = openKey.value == key(game)
+    fun toggle(game: NflGameRow) {
+        openKey.value = if (isOpen(game)) null else key(game)
+    }
+}
+
+@Composable
+private fun rememberNflPanels(ui: LeagueUi, engine: LeagueEngine?): NflPanels {
+    val openKey = rememberSaveable(ui.leagueId) { mutableStateOf<String?>(null) }
+    val panels = remember(ui.leagueId) { NflPanels(openKey) }
+    LaunchedEffect(panels.open, ui.updatedAt, ui.nfl.liveTick) {
+        val playsId = panels.open ?: return@LaunchedEffect
+        if (playsId.startsWith("id:") || engine == null) return@LaunchedEffect
+        panels.plays[playsId] = engine.nflPlays(playsId, 12)
+    }
+    return panels
+}
+
+private fun LazyListScope.nflGames(rows: List<NflGameRow>, now: Double, panels: NflPanels, dim: Boolean = false) {
+    items(rows, key = { "g-" + it.gameId }) { game ->
+        NflGameView(
+            game, now, panels.pulsed,
+            open = panels.isOpen(game),
+            onToggle = { panels.toggle(game) },
+            plays = panels.plays[game.playsId],
+            dimClubs = dim,
+        )
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
     }
 }
 

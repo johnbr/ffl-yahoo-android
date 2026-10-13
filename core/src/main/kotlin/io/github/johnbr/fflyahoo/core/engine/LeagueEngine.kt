@@ -57,6 +57,8 @@ data class LeagueUi(
     val scoreboard: Scoreboard,
     val nfl: NflGames,
     val myTeam: MyTeam?,
+    /** The clubs of the starters on both sides of [myTeam]'s matchup; empty without a team. */
+    val myClubs: Set<String>,
     val teamId: String?,
     /** Epoch seconds of the data shown, or null before the first successful poll. */
     val updatedAt: Double?,
@@ -186,11 +188,13 @@ class LeagueEngine(
 
     private fun snapshotUi(): LeagueUi {
         val now = clock()
+        val myTeam = LeagueState.findTeam(data, teamId)
         return LeagueUi(
             leagueId = leagueId,
             scoreboard = LeagueState.scoreboard(data, feed, leagueId, leagueName),
             nfl = LeagueState.nflGames(data, leagueId, nflLastPlays, pending.texts(), banners.active(now)),
-            myTeam = LeagueState.findTeam(data, teamId),
+            myTeam = myTeam,
+            myClubs = myTeam?.let { LeagueState.matchupClubs(data, it.index - 1) }.orEmpty(),
             teamId = teamId,
             updatedAt = data?.fetchedAt,
             error = lastError,

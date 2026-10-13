@@ -132,6 +132,15 @@ object LeagueState {
         return null
     }
 
+    /**
+     * The NFL clubs (abbreviations, as the seed writes them) of both sides' starters in one matchup
+     * (0-based index): the games that can still move its score. Bench points never count.
+     */
+    fun matchupClubs(data: LeagueData?, matchupIndex: Int): Set<String> {
+        val matchup = data?.matchups?.getOrNull(matchupIndex) ?: return emptySet()
+        return matchup.players.filter { it.starter && it.nflTeam.isNotEmpty() }.mapTo(LinkedHashSet()) { it.nflTeam }
+    }
+
     /** Both rosters for one matchup (0-based index) — the expand-a-row payload. */
     fun playerRows(data: LeagueData, matchupIndex: Int): MatchupDetail {
         if (matchupIndex !in data.matchups.indices) return MatchupDetail(null, emptyList())

@@ -10,7 +10,8 @@ leagues work too.
 ## Features
 
 - **Three tabs.**
-  - **My Matchup** shows your team against your opponent.
+  - **My Matchup** shows your team against your opponent. Under it are the NFL games in progress that
+    a starter on either side is playing in.
   - **League** shows every matchup.
   - **NFL** shows the week's games: live ones first, today's next, and the rest folded under "later this
     week" and "final".
