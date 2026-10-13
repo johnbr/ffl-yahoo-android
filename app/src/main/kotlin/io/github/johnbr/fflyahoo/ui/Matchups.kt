@@ -27,7 +27,9 @@ import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -114,8 +116,16 @@ fun MatchupRowView(
 
 @Composable
 private fun TeamName(team: TeamRow, leader: Boolean, align: TextAlign, modifier: Modifier) {
+    // The season record follows the name, "Tesla (0-4)", held to it by a no-break space so a
+    // wrapping name never leaves it alone on a line.
+    val recordColor = MaterialTheme.colorScheme.onSurfaceVariant
     Text(
-        team.name,
+        buildAnnotatedString {
+            append(team.name)
+            team.record?.let { record ->
+                withStyle(SpanStyle(fontWeight = FontWeight.Normal, color = recordColor)) { append("\u00A0($record)") }
+            }
+        },
         modifier = modifier,
         textAlign = align,
         fontSize = 14.sp,

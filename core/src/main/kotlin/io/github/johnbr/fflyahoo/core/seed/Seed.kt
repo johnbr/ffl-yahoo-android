@@ -183,7 +183,17 @@ object Seed {
                 },
                 4,
             ),
+            record = record(team),
         )
+    }
+
+    /** `3-1`, or `3-1-1` once there is a tie, as Yahoo prints it; the season's going into this week. */
+    private fun record(team: JsonObject): String? {
+        fun int(key: String) = (team[key] as? JsonPrimitive)?.takeUnless { it.isString }?.content?.toIntOrNull()
+        val wins = int("wins") ?: return null
+        val losses = int("losses") ?: return null
+        val ties = int("ties")
+        return if (ties != null && ties > 0) "$wins-$losses-$ties" else "$wins-$losses"
     }
 
     private fun service(payload: JsonObject): JsonObject =

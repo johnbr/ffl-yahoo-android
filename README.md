@@ -15,8 +15,8 @@ leagues work too.
   - **League** shows every matchup.
   - **NFL** shows the week's games: live ones first, today's next, and the rest folded under "later this
     week" and "final".
-- **Live points and projections.** Each team shows its current points and its live projection. The
-  projection is coloured against the morning's number.
+- **Live points and projections.** Each team shows its season record after its name (`Tesla (0-4)`),
+  its current points and its live projection. The projection is coloured against the morning's number.
 - **Per-matchup scoring plays.** Under each matchup is the play that last moved *that* score,
   aligned to the side that scored it. Bench points never count. Tap the line for the matchup's full
   scoring history, or tap the matchup for both lineups and a win probability.

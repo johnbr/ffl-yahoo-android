@@ -344,6 +344,7 @@
        "name": "Gridiron Gang",
        "points": 5.6,
        "projected": 135.44,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -580,6 +581,7 @@
        "name": "Two Minute Drill",
        "points": 0.0,
        "projected": 130.54,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -822,6 +824,7 @@
        "name": "Sunday Scaries",
        "points": 3.3,
        "projected": 133.99,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -1058,6 +1061,7 @@
        "name": "Hail Mary Inc",
        "points": 0.0,
        "projected": 135.27,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -1300,6 +1304,7 @@
        "name": "Pylon Patrol",
        "points": 10.3,
        "projected": 149.94,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -1536,6 +1541,7 @@
        "name": "Fourth And Long",
        "points": 0.0,
        "projected": 136.76,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -1778,6 +1784,7 @@
        "name": "Blitz Brigade",
        "points": 12.74,
        "projected": 129.61,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -2014,6 +2021,7 @@
        "name": "Play Action",
        "points": 9.0,
        "projected": 138.5,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -2256,6 +2264,7 @@
        "name": "Zone Defense",
        "points": 0.0,
        "projected": 140.78,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -2492,6 +2501,7 @@
        "name": "Red Zone Rangers",
        "points": 0.0,
        "projected": 145.75,
+       "record": "0-0",
        "remaining": 0,
        "starters": [
         {
@@ -2655,6 +2665,7 @@
       "name": "Gridiron Gang",
       "points": 5.6,
       "projected": 135.44,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "1"
      },
@@ -2663,6 +2674,7 @@
       "name": "Two Minute Drill",
       "points": 0.0,
       "projected": 130.54,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "10"
      },
@@ -2676,6 +2688,7 @@
       "name": "Two Minute Drill",
       "points": 0.0,
       "projected": 130.54,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "10"
      },
@@ -2684,6 +2697,7 @@
       "name": "Gridiron Gang",
       "points": 5.6,
       "projected": 135.44,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "1"
      },
@@ -2697,6 +2711,7 @@
       "name": "Sunday Scaries",
       "points": 3.3,
       "projected": 133.99,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "2"
      },
@@ -2705,6 +2720,7 @@
       "name": "Hail Mary Inc",
       "points": 0.0,
       "projected": 135.27,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "4"
      },
@@ -2718,6 +2734,7 @@
       "name": "Pylon Patrol",
       "points": 10.3,
       "projected": 149.94,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "3"
      },
@@ -2726,6 +2743,7 @@
       "name": "Fourth And Long",
       "points": 0.0,
       "projected": 136.76,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "8"
      },
@@ -2739,6 +2757,7 @@
       "name": "Hail Mary Inc",
       "points": 0.0,
       "projected": 135.27,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "4"
      },
@@ -2747,6 +2766,7 @@
       "name": "Sunday Scaries",
       "points": 3.3,
       "projected": 133.99,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "2"
      },
@@ -2760,6 +2780,7 @@
       "name": "Blitz Brigade",
       "points": 12.74,
       "projected": 129.61,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "5"
      },
@@ -2768,6 +2789,7 @@
       "name": "Play Action",
       "points": 9.0,
       "projected": 138.5,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "7"
      },
@@ -2781,6 +2803,7 @@
       "name": "Zone Defense",
       "points": 0.0,
       "projected": 140.78,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "6"
      },
@@ -2789,6 +2812,7 @@
       "name": "Red Zone Rangers",
       "points": 0.0,
       "projected": 145.75,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "9"
      },
@@ -2802,6 +2826,7 @@
       "name": "Play Action",
       "points": 9.0,
       "projected": 138.5,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "7"
      },
@@ -2810,6 +2835,7 @@
       "name": "Blitz Brigade",
       "points": 12.74,
       "projected": 129.61,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "5"
      },
@@ -2823,6 +2849,7 @@
       "name": "Fourth And Long",
       "points": 0.0,
       "projected": 136.76,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "8"
      },
@@ -2831,6 +2858,7 @@
       "name": "Pylon Patrol",
       "points": 10.3,
       "projected": 149.94,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "3"
      },
@@ -2844,6 +2872,7 @@
       "name": "Red Zone Rangers",
       "points": 0.0,
       "projected": 145.75,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "9"
      },
@@ -2852,6 +2881,7 @@
       "name": "Zone Defense",
       "points": 0.0,
       "projected": 140.78,
+      "record": "0-0",
       "remaining": 0,
       "team_id": "6"
      },
@@ -2882,6 +2912,7 @@
        "name": "Two Minute Drill",
        "points": 0.0,
        "projected": 130.54,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "10"
       },
@@ -2892,6 +2923,7 @@
        "name": "Gridiron Gang",
        "points": 5.6,
        "projected": 135.44,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "1"
       },
@@ -2906,6 +2938,7 @@
        "name": "Hail Mary Inc",
        "points": 0.0,
        "projected": 135.27,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "4"
       },
@@ -2916,6 +2949,7 @@
        "name": "Sunday Scaries",
        "points": 3.3,
        "projected": 133.99,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "2"
       },
@@ -2930,6 +2964,7 @@
        "name": "Fourth And Long",
        "points": 0.0,
        "projected": 136.76,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "8"
       },
@@ -2940,6 +2975,7 @@
        "name": "Pylon Patrol",
        "points": 10.3,
        "projected": 149.94,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "3"
       },
@@ -2954,6 +2990,7 @@
        "name": "Play Action",
        "points": 9.0,
        "projected": 138.5,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "7"
       },
@@ -2964,6 +3001,7 @@
        "name": "Blitz Brigade",
        "points": 12.74,
        "projected": 129.61,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "5"
       },
@@ -2978,6 +3016,7 @@
        "name": "Red Zone Rangers",
        "points": 0.0,
        "projected": 145.75,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "9"
       },
@@ -2988,6 +3027,7 @@
        "name": "Zone Defense",
        "points": 0.0,
        "projected": 140.78,
+       "record": "0-0",
        "remaining": 0,
        "team_id": "6"
       },
@@ -3098,6 +3138,7 @@
        "name": "Gridiron Gang",
        "points": 5.6,
        "projected": 135.44,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -3348,6 +3389,7 @@
        "name": "Two Minute Drill",
        "points": 0.0,
        "projected": 130.54,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -3604,6 +3646,7 @@
        "name": "Sunday Scaries",
        "points": 3.3,
        "projected": 133.99,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -3854,6 +3897,7 @@
        "name": "Hail Mary Inc",
        "points": 0.0,
        "projected": 135.27,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -4110,6 +4154,7 @@
        "name": "Pylon Patrol",
        "points": 10.3,
        "projected": 149.94,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -4360,6 +4405,7 @@
        "name": "Fourth And Long",
        "points": 0.0,
        "projected": 136.76,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -4616,6 +4662,7 @@
        "name": "Blitz Brigade",
        "points": 12.74,
        "projected": 129.61,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -4866,6 +4913,7 @@
        "name": "Play Action",
        "points": 9.0,
        "projected": 138.5,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -5122,6 +5170,7 @@
        "name": "Zone Defense",
        "points": 0.0,
        "projected": 140.78,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -5372,6 +5421,7 @@
        "name": "Red Zone Rangers",
        "points": 0.0,
        "projected": 145.75,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -5549,6 +5599,7 @@
       "name": "Gridiron Gang",
       "points": 5.6,
       "projected": 135.44,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "1"
      },
@@ -5557,6 +5608,7 @@
       "name": "Two Minute Drill",
       "points": 0.0,
       "projected": 130.54,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "10"
      },
@@ -5570,6 +5622,7 @@
       "name": "Two Minute Drill",
       "points": 0.0,
       "projected": 130.54,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "10"
      },
@@ -5578,6 +5631,7 @@
       "name": "Gridiron Gang",
       "points": 5.6,
       "projected": 135.44,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "1"
      },
@@ -5591,6 +5645,7 @@
       "name": "Sunday Scaries",
       "points": 3.3,
       "projected": 133.99,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "2"
      },
@@ -5599,6 +5654,7 @@
       "name": "Hail Mary Inc",
       "points": 0.0,
       "projected": 135.27,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "4"
      },
@@ -5612,6 +5668,7 @@
       "name": "Pylon Patrol",
       "points": 10.3,
       "projected": 149.94,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "3"
      },
@@ -5620,6 +5677,7 @@
       "name": "Fourth And Long",
       "points": 0.0,
       "projected": 136.76,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "8"
      },
@@ -5633,6 +5691,7 @@
       "name": "Hail Mary Inc",
       "points": 0.0,
       "projected": 135.27,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "4"
      },
@@ -5641,6 +5700,7 @@
       "name": "Sunday Scaries",
       "points": 3.3,
       "projected": 133.99,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "2"
      },
@@ -5654,6 +5714,7 @@
       "name": "Blitz Brigade",
       "points": 12.74,
       "projected": 129.61,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "5"
      },
@@ -5662,6 +5723,7 @@
       "name": "Play Action",
       "points": 9.0,
       "projected": 138.5,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "7"
      },
@@ -5675,6 +5737,7 @@
       "name": "Zone Defense",
       "points": 0.0,
       "projected": 140.78,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "6"
      },
@@ -5683,6 +5746,7 @@
       "name": "Red Zone Rangers",
       "points": 0.0,
       "projected": 145.75,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "9"
      },
@@ -5696,6 +5760,7 @@
       "name": "Play Action",
       "points": 9.0,
       "projected": 138.5,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "7"
      },
@@ -5704,6 +5769,7 @@
       "name": "Blitz Brigade",
       "points": 12.74,
       "projected": 129.61,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "5"
      },
@@ -5717,6 +5783,7 @@
       "name": "Fourth And Long",
       "points": 0.0,
       "projected": 136.76,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "8"
      },
@@ -5725,6 +5792,7 @@
       "name": "Pylon Patrol",
       "points": 10.3,
       "projected": 149.94,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "3"
      },
@@ -5738,6 +5806,7 @@
       "name": "Red Zone Rangers",
       "points": 0.0,
       "projected": 145.75,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "9"
      },
@@ -5746,6 +5815,7 @@
       "name": "Zone Defense",
       "points": 0.0,
       "projected": 140.78,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "6"
      },
@@ -6181,6 +6251,7 @@
        "name": "Two Minute Drill",
        "points": 0.0,
        "projected": 130.54,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "10"
       },
@@ -6191,6 +6262,7 @@
        "name": "Gridiron Gang",
        "points": 5.6,
        "projected": 135.44,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "1"
       },
@@ -6205,6 +6277,7 @@
        "name": "Hail Mary Inc",
        "points": 0.0,
        "projected": 135.27,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "4"
       },
@@ -6215,6 +6288,7 @@
        "name": "Sunday Scaries",
        "points": 3.3,
        "projected": 133.99,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "2"
       },
@@ -6229,6 +6303,7 @@
        "name": "Fourth And Long",
        "points": 0.0,
        "projected": 136.76,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "8"
       },
@@ -6239,6 +6314,7 @@
        "name": "Pylon Patrol",
        "points": 10.3,
        "projected": 149.94,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "3"
       },
@@ -6253,6 +6329,7 @@
        "name": "Play Action",
        "points": 9.0,
        "projected": 138.5,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "7"
       },
@@ -6263,6 +6340,7 @@
        "name": "Blitz Brigade",
        "points": 12.74,
        "projected": 129.61,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "5"
       },
@@ -6277,6 +6355,7 @@
        "name": "Red Zone Rangers",
        "points": 0.0,
        "projected": 145.75,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "9"
       },
@@ -6287,6 +6366,7 @@
        "name": "Zone Defense",
        "points": 0.0,
        "projected": 140.78,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "6"
       },
@@ -6397,6 +6477,7 @@
        "name": "Gridiron Gang",
        "points": 5.6,
        "projected": 135.44,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -6647,6 +6728,7 @@
        "name": "Two Minute Drill",
        "points": 0.0,
        "projected": 130.54,
+       "record": "0-0",
        "remaining": 7,
        "starters": [
         {
@@ -6903,6 +6985,7 @@
        "name": "Sunday Scaries",
        "points": 3.3,
        "projected": 133.99,
+       "record": "0-0",
        "remaining": 8,
        "starters": [
         {
@@ -7153,6 +7236,7 @@
        "name": "Hail Mary Inc",
        "points": 0.0,
        "projected": 135.27,
+       "record": "0-0",
        "remaining": 7,
        "starters": [
         {
@@ -7409,6 +7493,7 @@
        "name": "Pylon Patrol",
        "points": 10.3,
        "projected": 149.94,
+       "record": "0-0",
        "remaining": 8,
        "starters": [
         {
@@ -7659,6 +7744,7 @@
        "name": "Fourth And Long",
        "points": 0.0,
        "projected": 136.76,
+       "record": "0-0",
        "remaining": 8,
        "starters": [
         {
@@ -7915,6 +8001,7 @@
        "name": "Blitz Brigade",
        "points": 12.74,
        "projected": 129.61,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -8165,6 +8252,7 @@
        "name": "Play Action",
        "points": 9.0,
        "projected": 138.5,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -8421,6 +8509,7 @@
        "name": "Zone Defense",
        "points": 0.0,
        "projected": 140.78,
+       "record": "0-0",
        "remaining": 8,
        "starters": [
         {
@@ -8671,6 +8760,7 @@
        "name": "Red Zone Rangers",
        "points": 0.0,
        "projected": 145.75,
+       "record": "0-0",
        "remaining": 9,
        "starters": [
         {
@@ -8845,6 +8935,7 @@
       "name": "Gridiron Gang",
       "points": 5.6,
       "projected": 135.44,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "1"
      },
@@ -8853,6 +8944,7 @@
       "name": "Two Minute Drill",
       "points": 0.0,
       "projected": 130.54,
+      "record": "0-0",
       "remaining": 7,
       "team_id": "10"
      },
@@ -8866,6 +8958,7 @@
       "name": "Two Minute Drill",
       "points": 0.0,
       "projected": 130.54,
+      "record": "0-0",
       "remaining": 7,
       "team_id": "10"
      },
@@ -8874,6 +8967,7 @@
       "name": "Gridiron Gang",
       "points": 5.6,
       "projected": 135.44,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "1"
      },
@@ -8887,6 +8981,7 @@
       "name": "Sunday Scaries",
       "points": 3.3,
       "projected": 133.99,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "2"
      },
@@ -8895,6 +8990,7 @@
       "name": "Hail Mary Inc",
       "points": 0.0,
       "projected": 135.27,
+      "record": "0-0",
       "remaining": 7,
       "team_id": "4"
      },
@@ -8908,6 +9004,7 @@
       "name": "Pylon Patrol",
       "points": 10.3,
       "projected": 149.94,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "3"
      },
@@ -8916,6 +9013,7 @@
       "name": "Fourth And Long",
       "points": 0.0,
       "projected": 136.76,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "8"
      },
@@ -8929,6 +9027,7 @@
       "name": "Hail Mary Inc",
       "points": 0.0,
       "projected": 135.27,
+      "record": "0-0",
       "remaining": 7,
       "team_id": "4"
      },
@@ -8937,6 +9036,7 @@
       "name": "Sunday Scaries",
       "points": 3.3,
       "projected": 133.99,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "2"
      },
@@ -8950,6 +9050,7 @@
       "name": "Blitz Brigade",
       "points": 12.74,
       "projected": 129.61,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "5"
      },
@@ -8958,6 +9059,7 @@
       "name": "Play Action",
       "points": 9.0,
       "projected": 138.5,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "7"
      },
@@ -8971,6 +9073,7 @@
       "name": "Zone Defense",
       "points": 0.0,
       "projected": 140.78,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "6"
      },
@@ -8979,6 +9082,7 @@
       "name": "Red Zone Rangers",
       "points": 0.0,
       "projected": 145.75,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "9"
      },
@@ -8992,6 +9096,7 @@
       "name": "Play Action",
       "points": 9.0,
       "projected": 138.5,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "7"
      },
@@ -9000,6 +9105,7 @@
       "name": "Blitz Brigade",
       "points": 12.74,
       "projected": 129.61,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "5"
      },
@@ -9013,6 +9119,7 @@
       "name": "Fourth And Long",
       "points": 0.0,
       "projected": 136.76,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "8"
      },
@@ -9021,6 +9128,7 @@
       "name": "Pylon Patrol",
       "points": 10.3,
       "projected": 149.94,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "3"
      },
@@ -9034,6 +9142,7 @@
       "name": "Red Zone Rangers",
       "points": 0.0,
       "projected": 145.75,
+      "record": "0-0",
       "remaining": 9,
       "team_id": "9"
      },
@@ -9042,6 +9151,7 @@
       "name": "Zone Defense",
       "points": 0.0,
       "projected": 140.78,
+      "record": "0-0",
       "remaining": 8,
       "team_id": "6"
      },
@@ -9473,6 +9583,7 @@
        "name": "Two Minute Drill",
        "points": 0.0,
        "projected": 130.54,
+       "record": "0-0",
        "remaining": 7,
        "team_id": "10"
       },
@@ -9483,6 +9594,7 @@
        "name": "Gridiron Gang",
        "points": 5.6,
        "projected": 135.44,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "1"
       },
@@ -9497,6 +9609,7 @@
        "name": "Hail Mary Inc",
        "points": 0.0,
        "projected": 135.27,
+       "record": "0-0",
        "remaining": 7,
        "team_id": "4"
       },
@@ -9507,6 +9620,7 @@
        "name": "Sunday Scaries",
        "points": 3.3,
        "projected": 133.99,
+       "record": "0-0",
        "remaining": 8,
        "team_id": "2"
       },
@@ -9521,6 +9635,7 @@
        "name": "Fourth And Long",
        "points": 0.0,
        "projected": 136.76,
+       "record": "0-0",
        "remaining": 8,
        "team_id": "8"
       },
@@ -9531,6 +9646,7 @@
        "name": "Pylon Patrol",
        "points": 10.3,
        "projected": 149.94,
+       "record": "0-0",
        "remaining": 8,
        "team_id": "3"
       },
@@ -9545,6 +9661,7 @@
        "name": "Play Action",
        "points": 9.0,
        "projected": 138.5,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "7"
       },
@@ -9555,6 +9672,7 @@
        "name": "Blitz Brigade",
        "points": 12.74,
        "projected": 129.61,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "5"
       },
@@ -9569,6 +9687,7 @@
        "name": "Red Zone Rangers",
        "points": 0.0,
        "projected": 145.75,
+       "record": "0-0",
        "remaining": 9,
        "team_id": "9"
       },
@@ -9579,6 +9698,7 @@
        "name": "Zone Defense",
        "points": 0.0,
        "projected": 140.78,
+       "record": "0-0",
        "remaining": 8,
        "team_id": "6"
       },

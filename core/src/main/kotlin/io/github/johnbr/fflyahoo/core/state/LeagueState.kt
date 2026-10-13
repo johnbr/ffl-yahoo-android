@@ -95,7 +95,7 @@ object LeagueState {
         return if (x < 0) -result else result
     }
 
-    fun teamRow(team: Team) = TeamRow(team.teamId, team.name, team.points, team.projected, team.liveProjected, team.remaining)
+    fun teamRow(team: Team) = TeamRow(team.teamId, team.name, team.points, team.projected, team.liveProjected, team.remaining, team.record)
 
     /** Nobody on either side left to play. A tier that cannot count never declares a winner. */
     fun matchupFinal(home: Team, away: Team): Boolean = home.remaining == 0 && away.remaining == 0
@@ -152,6 +152,7 @@ object LeagueState {
                 team.teamId, team.name, team.points, team.projected, team.liveProjected, team.remaining,
                 starters = roster.filter { it.starter }.map(::playerRow),
                 bench = roster.filterNot { it.starter }.map(::playerRow),
+                record = team.record,
             )
         }
         return MatchupDetail("w${data.week}.m${matchupIndex + 1}", sides)
