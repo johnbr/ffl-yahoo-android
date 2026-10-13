@@ -5,6 +5,7 @@ import android.graphics.Paint
 import android.graphics.Typeface
 import android.util.TypedValue
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
@@ -23,6 +24,7 @@ import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
+import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
 import androidx.glance.layout.Row
@@ -36,6 +38,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
+import androidx.glance.unit.ColorProvider
 import io.github.johnbr.fflyahoo.app
 import io.github.johnbr.fflyahoo.ui.MainActivity
 
@@ -92,8 +95,8 @@ class MatchupWidget : GlanceAppWidget() {
                 Spacer(GlanceModifier.height(4.dp))
             }
             val columns = Columns.measure(LocalContext.current, listOf(s.myPoints, s.opponentPoints), listOf(s.myProjected, s.opponentProjected))
-            TeamLine(s.myName, s.myPoints, s.myProjected, s.leader == "me", s.leader == "opponent", projections, columns)
-            TeamLine(s.opponentName, s.opponentPoints, s.opponentProjected, s.leader == "opponent", s.leader == "me", projections, columns)
+            TeamLine(s.myName, s.myPoints, s.myProjected, s.myTrend, s.leader == "me", s.leader == "opponent", projections, columns)
+            TeamLine(s.opponentName, s.opponentPoints, s.opponentProjected, s.opponentTrend, s.leader == "opponent", s.leader == "me", projections, columns)
             if (lastPlay && s.lastPlay.isNotEmpty()) {
                 Spacer(GlanceModifier.height(if (tall) 4.dp else 2.dp))
                 Text(s.lastPlay, style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp), maxLines = if (tall) 2 else 1)
@@ -106,7 +109,7 @@ class MatchupWidget : GlanceAppWidget() {
      * the wider of the two teams' figures, so the decimal points line up down the widget.
      */
     @Composable
-    private fun TeamLine(name: String, points: String, projected: String, ahead: Boolean, behind: Boolean, projections: Boolean, columns: Columns) {
+    private fun TeamLine(name: String, points: String, projected: String, trend: String, ahead: Boolean, behind: Boolean, projections: Boolean, columns: Columns) {
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 name,
@@ -118,7 +121,7 @@ class MatchupWidget : GlanceAppWidget() {
                 Text(
                     projected,
                     GlanceModifier.width(columns.projected).padding(start = 8.dp),
-                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = PROJECTED_SIZE, textAlign = TextAlign.End),
+                    style = TextStyle(color = trendColor(trend), fontSize = PROJECTED_SIZE, textAlign = TextAlign.End),
                     maxLines = 1,
                 )
             }
@@ -135,6 +138,15 @@ class MatchupWidget : GlanceAppWidget() {
                 maxLines = 1,
             )
         }
+    }
+
+    /** A live projection against the morning's, coloured as the app colours it: above green, below red. */
+    @Composable
+    private fun trendColor(trend: String): ColorProvider = when (trend) {
+        "UP" -> UP
+        "DOWN" -> DOWN
+        "FLAT" -> GlanceTheme.colors.onSurface
+        else -> GlanceTheme.colors.onSurfaceVariant
     }
 
     /** The two number columns' widths, measured in the widget's own font at the user's font scale. */
@@ -168,6 +180,10 @@ class MatchupWidget : GlanceAppWidget() {
 
         /** Two rows: the league line on top, and two lines for the last play. */
         val MEDIUM = DpSize(220.dp, 110.dp)
+
+        // The app's own trend colours (ui/Theme.kt), light and dark.
+        private val UP = ColorProvider(day = Color(0xFF2E7D32), night = Color(0xFF66BB6A))
+        private val DOWN = ColorProvider(day = Color(0xFFC62828), night = Color(0xFFEF5350))
 
         private val NAME_SIZE = 14.sp
         private val PROJECTED_SIZE = 12.sp

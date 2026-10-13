@@ -44,6 +44,9 @@ data class WidgetSnapshot(
     val activeGames: Int,
     /** `me` / `opponent` — who is ahead; empty on a tie or before a score. */
     val leader: String = "",
+    /** Each live projection against the morning's: `UP` / `DOWN` / `FLAT`, empty when there is none. */
+    val myTrend: String = "",
+    val opponentTrend: String = "",
 ) {
     companion object {
         private fun file(context: Context) = File(context.filesDir, "widget.json")
@@ -69,6 +72,8 @@ data class WidgetSnapshot(
                 opponentProjected = Present.points(mine.opponent.liveProjected),
                 lastPlay = row?.lastPlay?.shortText ?: "",
                 activeGames = ui.scoreboard.activeGames,
+                myTrend = Present.trend(mine.me.liveProjected, mine.me.projected)?.name ?: "",
+                opponentTrend = Present.trend(mine.opponent.liveProjected, mine.opponent.projected)?.name ?: "",
                 leader = when (row?.leader) {
                     null -> ""
                     mine.me.teamId -> "me"
