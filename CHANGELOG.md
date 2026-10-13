@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.1.2...v0.2.0) (2026-10-13)
+
+
+### Features
+
+* show the matchup's live NFL games under it on My Matchup ([#8](https://github.com/johnbr/ffl-yahoo-android/issues/8)) ([0e78036](https://github.com/johnbr/ffl-yahoo-android/commit/0e78036c03dffd1918461378923d4c76f9b3b425))
+
+
+### Bug Fixes
+
+* a play a correction took back is no matchup's last play ([#9](https://github.com/johnbr/ffl-yahoo-android/issues/9)) ([c02d263](https://github.com/johnbr/ffl-yahoo-android/commit/c02d2634d83f69ce9f5d477a1a8b98a769a869eb))
+
 ## [0.1.2](https://github.com/johnbr/ffl-yahoo-android/compare/v0.1.1...v0.1.2) (2026-10-12)
 
 
