@@ -60,7 +60,8 @@ object Seed {
         val league = league(service(seed), leagueId)
         val service = service(seed)
 
-        val week = (league.obj("weekInfo")?.get("week")).let { if (truthy(it)) intOf(it!!) ?: throw bad("week") else 0 }
+        val weekInfo = league.obj("weekInfo")
+        val week = (weekInfo?.get("week")).let { if (truthy(it)) intOf(it!!) ?: throw bad("week") else 0 }
         val modifiers = scoringModifiers(league)
         val statsByPlayer = Relay.parseStats(statsText)
         val defenseByTeam = Relay.parseDefense(statsText)
@@ -68,6 +69,11 @@ object Seed {
         // Before the rosters are built: a player's state, note and live projection all come from their
         // game's, and a forgotten game says "not yet".
         Relay.settleForgottenGames(games, now)
+        val window = Relay.weekWindow(
+            weekInfo?.get("start")?.let { pyStr(it) },
+            weekInfo?.get("end")?.let { pyStr(it) },
+        )
+        val heldOver = Relay.heldOverClubs(games, window)
         val teams = league.obj("teams") ?: JsonObject(emptyMap())
 
         val matchups = ArrayList<Matchup>()
@@ -80,7 +86,9 @@ object Seed {
                 val players = ArrayList<Player>()
                 pair.forEachIndexed { side, teamId ->
                     val team = teams[pyStr(teamId)] as? JsonObject ?: JsonObject(emptyMap())
-                    val roster = roster(team, service, statsByPlayer, defenseByTeam, modifiers, games, side)
+                    val roster = roster(
+                        team, service, statsByPlayer, defenseByTeam, modifiers, games, side, heldOver, now,
+                    )
                     players += roster
                     sides += team(team, roster)
                 }
@@ -115,9 +123,12 @@ object Seed {
         modifiers: Map<String, Double>,
         games: Map<String, GameState>,
         side: Int,
+        heldOver: Set<String>,
     ): Player {
         val nflTeam = strOr(meta["teamId"])
-        val game = games[nflTeam]
+        // A held-over club's row is last week's game, which says nothing about this one beyond that it has
+        // not been played yet.
+        val game = if (nflTeam in heldOver) null else games[nflTeam]
         val projected = optFloat(entry["projectedPoints"])
         val points = if (stats.isNotEmpty()) Scoring.score(stats, modifiers) else 0.0
         return Player(
@@ -138,7 +149,7 @@ object Seed {
             nflTeam = strOr(meta["team"]),
             // A club with no row in the games feed reads `unknown`, never `bye`: a real bye and a feed
             // that arrived short look identical from here.
-            gameState = game?.state ?: "unknown",
+            gameState = game?.state ?: if (nflTeam in heldOver) "pre" else "unknown",
         )
     }
 
@@ -150,17 +161,23 @@ object Seed {
         modifiers: Map<String, Double>,
         games: Map<String, GameState>,
         side: Int,
+        heldOver: Set<String>,
+        now: Double,
     ): List<Player> {
         val metaAll = service.obj("players") ?: JsonObject(emptyMap())
         return team.list("players").filterIsInstance<JsonObject>().map { entry ->
             val pid = strOr(entry["id"])
             val meta = metaAll[pid] as? JsonObject ?: JsonObject(emptyMap())
-            val stats = if (isDefense(entry, meta)) {
-                defenseByTeam[strOr(meta["teamId"])] ?: emptyMap()
-            } else {
-                statsByPlayer[pid] ?: emptyMap()
+            val club = strOr(meta["teamId"])
+            val game = games[club]
+            val stats = when {
+                // No game of this club's this week has been played, so these stats are last week's —
+                // see Relay.WEEK_SLACK_SECONDS.
+                club in heldOver || (game != null && Relay.yetToKickOff(game, now)) -> emptyMap()
+                isDefense(entry, meta) -> defenseByTeam[club] ?: emptyMap()
+                else -> statsByPlayer[pid] ?: emptyMap()
             }
-            player(entry, meta, stats, modifiers, games, side)
+            player(entry, meta, stats, modifiers, games, side, heldOver)
         }
     }
 

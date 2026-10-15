@@ -144,6 +144,18 @@ def _write(path: Path, payload) -> None:
 # --------------------------------------------------------------------------------------------------
 
 
+WEEK_2 = {"week": 2, "start": "2026-09-17", "end": "2026-09-21"}
+
+
+def with_week_info(seed: dict, week_info: dict | None) -> dict:
+    """The seed saying another week; the rosters are beside the point."""
+    if week_info is None:
+        return seed
+    relabelled = json.loads(json.dumps(seed))
+    relabelled["service"]["leagues"][LEAGUE_ID]["weekInfo"] = week_info
+    return relabelled
+
+
 def static_golden(fixtures: Path):
     from yahoo_fantasy_football import league_state, plays, yahoo_redzone as rz
     from yahoo_fantasy_football.yahoo_web import extract_league_id
@@ -153,19 +165,24 @@ def static_golden(fixtures: Path):
     name = rz.league_name(seed, LEAGUE_ID)
 
     leagues = {}
-    for label, games_file, now in (
-        ("w1", "yahoo_relay_games_2026_w1.txt", W1_NOW),
-        ("w2_reset", "yahoo_relay_games_2026_w2_reset.txt", W2_RESET_NOW),
-        ("no_games", None, W1_NOW),
+    for label, games_file, now, week_info in (
+        ("w1", "yahoo_relay_games_2026_w1.txt", W1_NOW, None),
+        # The w1 seed standing in for week 2's, which is the week the reset games feed belongs to.
+        ("w2_reset", "yahoo_relay_games_2026_w2_reset.txt", W2_RESET_NOW, WEEK_2),
+        # The league turned over to week 2 while the relay still holds week 1's games and stat lines.
+        ("turnover", "yahoo_relay_games_2026_w1.txt", W1_NOW, WEEK_2),
+        ("no_games", None, W1_NOW, None),
     ):
         games_text = (fixtures / games_file).read_text() if games_file else ""
-        data = rz.league_from_payloads(seed, stats_text, games_text, LEAGUE_ID, now)
+        league_seed = with_week_info(seed, week_info)
+        data = rz.league_from_payloads(league_seed, stats_text, games_text, LEAGUE_ID, now)
         feed = plays.PlayFeed()
         scoreboard = league_state.scoreboard_attributes(data, feed, LEAGUE_ID, name)
         scoreboard.pop("source", None)
         leagues[label] = {
             "now": now,
             "games_file": games_file,
+            "week_info": week_info,
             "scoreboard": scoreboard,
             "nfl": league_state.nfl_games_attributes(data, LEAGUE_ID),
             "details": [

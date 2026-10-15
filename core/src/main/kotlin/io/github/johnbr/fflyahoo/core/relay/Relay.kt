@@ -306,6 +306,61 @@ object Relay {
         return settled
     }
 
+    /**
+     * Slack either side of the league's own week dates for a kickoff to still belong to that week.
+     *
+     * The league and the relay turn the week over hours apart: every week so far the league's seed said
+     * the new week from just after midnight PT on Wednesday, while the relay kept the old week's games and
+     * stat lines until it reset at 04:00. The new week's rosters were scored on the old week's stats for
+     * those hours, and when the stat feed emptied every player "lost" his whole line at once (115 events at
+     * 04:03 on 2026-10-14). The stat lines say nothing of their game, so the games feed decides: a club's
+     * stats count toward the league's week only when its game falls in that week and has kicked off.
+     *
+     * `weekInfo` dates have no time zone, and Monday night's kickoff is already Tuesday in UTC. A day of
+     * slack keeps every kickoff on the week's own dates inside and cannot reach a neighbouring week's games:
+     * the weeks are separated by a Tuesday and a Wednesday with no football.
+     */
+    const val WEEK_SLACK_SECONDS = 86400.0
+
+    /**
+     * The kickoffs that belong to the league's week, as `[start, end)` epochs, from the seed's `weekInfo`
+     * dates. Null when either is missing or unreadable, in which case every game is taken to be this week's.
+     */
+    fun weekWindow(start: String?, end: String?): Pair<Double, Double>? {
+        fun midnight(value: String?): Double? = try {
+            java.time.LocalDate.parse(value ?: return null)
+                .atStartOfDay(java.time.ZoneOffset.UTC).toEpochSecond().toDouble()
+        } catch (_: java.time.format.DateTimeParseException) {
+            null
+        }
+        val low = midnight(start) ?: return null
+        val high = midnight(end) ?: return null
+        // `end` is a whole day, so the window runs to its midnight, plus the slack.
+        return (low - WEEK_SLACK_SECONDS) to (high + 2 * WEEK_SLACK_SECONDS)
+    }
+
+    /**
+     * Clubs whose row in the games feed is another week's game: the relay has not turned over yet, their
+     * games this week are still to come, and whatever the stat feed holds for their players is last week's.
+     */
+    fun heldOverClubs(games: Map<String, GameState>, window: Pair<Double, Double>?): Set<String> {
+        if (window == null) return emptySet()
+        val (low, high) = window
+        return games.filter { (_, game) ->
+            val kickoff = epoch(game.startTime)?.toDouble() ?: return@filter false
+            !(low <= kickoff && kickoff < high)
+        }.keys
+    }
+
+    /**
+     * This week's game, not started — so any stats for its clubs are not from it. The relay's own turnover
+     * is not atomic either: its games feed can list the new slate a poll before the stat feed lets go.
+     */
+    fun yetToKickOff(game: GameState, now: Double): Boolean {
+        val kickoff = epoch(game.startTime) ?: return false
+        return game.state == "pre" && kickoff > now
+    }
+
     /** The week's slate, one entry per GAME, in kickoff order (then id, for stability). */
     fun gamesInOrder(games: Map<String, GameState>): List<GameState> {
         val unique = LinkedHashMap<String, GameState>()
