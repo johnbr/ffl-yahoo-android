@@ -5,7 +5,7 @@ plugins {
 }
 
 // versionName is rewritten by release-please (x-release-please-version); versionCode follows it.
-val appVersion = "0.5.0" // x-release-please-version
+val appVersion = "0.5.1" // x-release-please-version
 
 fun versionCodeOf(version: String): Int {
     val (major, minor, patch) = version.split(".").map { it.toInt() }
