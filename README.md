@@ -20,6 +20,9 @@ leagues work too.
 - **Per-matchup scoring plays.** Under each matchup is the play that last moved *that* score,
   aligned to the side that scored it. Bench points never count. Tap the line for the matchup's full
   scoring history, or tap the matchup for both lineups and a win probability.
+- **A player's season.** Tap a player (or a defence) in a lineup for his season, week by week: the
+  opponent or bye, Yahoo's projection, and the points he scored, with the weeks still to come projected
+  against their opponents. "‹ Lineup" goes back.
 - **The NFL games.**
   - Each game shows its clock, down and distance, possession, a red-zone badge and a field bar.
   - Every game has its play list.
@@ -46,6 +49,13 @@ runs on:
   Leagues share these fetches.
 - `relay-stream.sports.yahoo.com/nfl/plays-<id>.txt` gives play-by-play for live games. It is fetched
   with `If-Modified-Since`, so an unchanged feed costs a `304`.
+
+A player's season also reads the same league seed with `&week=N` for each week's projections (a
+finished week's are kept, so they are fetched once), and ESPN's public fantasy API
+(`lm-api-reads.fantasy.espn.com`, also anonymous) for each player's weekly stat lines and the NFL
+schedule. Yahoo publishes no per-week fantasy points without a login, so a finished week's points are
+ESPN's line scored with your league's modifiers. Checked against week 5 of 2026: 115 of 115 players to
+the cent. The first player opened costs about twenty requests; after that it is cached.
 
 **The points are computed, not read.** Yahoo publishes no live fantasy totals on this tier. The app
 multiplies each player's live stat line by your league's scoring modifiers, as Yahoo's own page does.
@@ -95,8 +105,8 @@ conventional commits. A release builds a signed APK and attaches it.
 
 ## Attribution
 
-Fantasy data provided by Yahoo Fantasy. This project is not affiliated with, endorsed by, or
-sponsored by Yahoo or the NFL.
+Fantasy data provided by Yahoo Fantasy. Past weeks' player stat lines and the NFL schedule come from
+ESPN. This project is not affiliated with, endorsed by, or sponsored by Yahoo, ESPN or the NFL.
 
 ## License
 

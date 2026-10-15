@@ -8,7 +8,7 @@ test, this script feeds the real Python code the same inputs the Kotlin tests us
 produces; ``ParityTest`` asserts the Kotlin output is identical. Re-run it whenever the integration's
 behaviour changes on purpose, and commit the result.
 
-Two goldens:
+Three goldens:
 
 * ``static.json`` — pure functions over the captured fixtures: the league assembled from the seed and
   the relay feeds, every roster, the NFL slate, stat lines, play text, names.
@@ -17,6 +17,9 @@ Two goldens:
   a few at a time, the games feed running a play ahead of the play feed). Every poll's bodies are
   written out (each distinct body once, under ``bodies``), so the Kotlin side replays the same requests
   rather than regenerating them.
+* ``history.json`` — ``history.py`` over the ESPN captures and the week-1 seed: week 5's 115 lines
+  scored the league's way, every rostered player matched to ESPN, the schedule, and six players'
+  seasons assembled.
 """
 
 from __future__ import annotations
@@ -455,6 +458,133 @@ def scenario_golden(fixtures: Path):
     return {"league_id": LEAGUE_ID, "league_name": name, "bodies": table, "polls": polls, "results": out}
 
 
+# --------------------------------------------------------------------------------------------------
+# A player's season
+# --------------------------------------------------------------------------------------------------
+
+HISTORY_PLAYERS = {"maye": 4431452, "mahomes": 3139477, "walker": 4567048, "aubrey": 3953687, "texans": -16034}
+
+# Names that have bitten someone: suffixes, initials, apostrophes, accents, hyphens.
+HISTORY_NAMES = [
+    "Kenneth Walker III", "D.J. Moore", "DJ Moore", "Ka'imi Fairbairn", "Amon-Ra St. Brown",
+    "Marvin Harrison Jr.", "José Ramírez", "Michael Pittman Jr.", "Cam Ward", "Patrick Mahomes II",
+]
+
+# Matching queries beyond the rostered players: the collisions, a variant spelling, nobody.
+HISTORY_QUERIES = [
+    ("Lamar Jackson", "33", "QB"), ("Justin Jefferson", "16", "WR"), ("Pat Mahomes", "12", "QB"),
+    ("Josh Johnson", "4", "QB"), ("Chris Jones", "12", "DEF"), ("Nobody Atall", "12", "QB"),
+    ("Texans", "34", "DEF"), ("Kenneth Walker", "12", "RB"),
+]
+
+
+def history_golden(fixtures: Path):
+    from yahoo_fantasy_football import history as h, yahoo_redzone as rz
+
+    seed = json.loads((fixtures / "yahoo_redzone_2026_w1.json").read_text())
+    modifiers = rz.scoring_modifiers(seed["service"]["leagues"][LEAGUE_ID])
+    unresolved = h.unresolved_stats(modifiers)
+    players = h.parse_espn_players(json.loads((fixtures / "espn_players_2026.json").read_text()))
+    schedule = h.parse_espn_schedule(json.loads((fixtures / "espn_schedule_2026.json").read_text()))
+    stats = json.loads((fixtures / "espn_player_stats_2026.json").read_text())
+    cases = json.loads((fixtures / "espn_week5_vs_yahoo.json").read_text())["cases"]
+
+    def fixture(f):
+        return {"week": f.week, "opponent_id": f.opponent_id, "home": f.home, "kickoff": f.kickoff}
+
+    week5 = []
+    for case in cases:
+        points, exact = h.week_points(case["espn_stats"], case["defense"], modifiers, unresolved)
+        week5.append({
+            "player": case["player"], "points": points, "exact": exact,
+            "stats": h.yahoo_stats(case["espn_stats"], case["defense"]),
+        })
+
+    variants = {
+        "league": modifiers,
+        "uneven_short_kicks": {**modifiers, "fieldGoalsMade0through19": 2.0, "fieldGoalsMissed20through29": -2.0},
+        "forty_yard_bonus": {**modifiers, "fortyPlusPassTD": 2.0, "tacklesForLoss": 1.0},
+        "nothing": {},
+    }
+    kicks = [{"80": 1.0, "86": 3.0}, {"77": 1.0, "74": 1.0, "201": 1.0}, {"82": 1.0, "76": 1.0}]
+    unresolved_out = {}
+    for label, mods in variants.items():
+        missing = h.unresolved_stats(mods)
+        unresolved_out[label] = {
+            "modifiers": mods,
+            "unresolved": missing,
+            "kicks": [list(h.week_points(k, False, mods, missing)) for k in kicks],
+        }
+
+    queries = []
+    league = seed["service"]["leagues"][LEAGUE_ID]
+    for team in league["teams"].values():
+        for entry in team["players"]:
+            who = h.player_identity(seed, LEAGUE_ID, entry["id"])
+            queries.append((who.name, who.team_id, who.position))
+    queries += HISTORY_QUERIES
+    matches = []
+    for name, team_id, position in queries:
+        found = h.match_espn_player(players, name, team_id, position)
+        matches.append({"name": name, "team_id": team_id, "position": position,
+                        "espn_id": found.espn_id if found else None})
+
+    weeks = {
+        label: {str(w): line for w, line in h.parse_espn_weeks(stats, espn_id, 2026).items()}
+        for label, espn_id in HISTORY_PLAYERS.items()
+    }
+
+    projections_w1 = h.week_projections(seed, LEAGUE_ID)
+    # The week-1 projections standing in for a few weeks of the season; the weeks left out had the
+    # player on no roster.
+    projection_weeks = [1, 3, 5, 6, 7, 8, 12, 18]
+    projections = {week: projections_w1 for week in projection_weeks}
+    seasons = {}
+    for label, player_id, espn_id, current, live, scoring in (
+        ("maye", "40881", HISTORY_PLAYERS["maye"], 6, 3.5, "league"),
+        ("mahomes", "30123", HISTORY_PLAYERS["mahomes"], 6, 0.0, "league"),
+        ("walker", "33996", HISTORY_PLAYERS["walker"], 4, 11.2, "league"),
+        ("texans", "100034", HISTORY_PLAYERS["texans"], 6, None, "league"),
+        ("aubrey_uneven", "40819", HISTORY_PLAYERS["aubrey"], 6, 1.0, "uneven_short_kicks"),
+        ("maye_unmatched", "40881", None, 6, 3.5, "league"),
+    ):
+        mods = variants[scoring]
+        who = h.player_identity(seed, LEAGUE_ID, player_id)
+        actuals = h.parse_espn_weeks(stats, espn_id, 2026) if espn_id is not None else None
+        rows = h.season_rows(who, h.season_weeks(schedule), current, projections, actuals,
+                             schedule.get(who.team_id, {}), mods, live)
+        seasons[label] = {
+            "player_id": player_id, "espn_id": espn_id, "current": current, "live": live,
+            "modifiers": scoring,
+            "identity": {"player_id": who.player_id, "name": who.name, "team_id": who.team_id,
+                         "position": who.position},
+            "rows": rows, "totals": h.season_totals(rows),
+        }
+
+    return {
+        "season_of": {d: h.season_of({"start": d}) for d in ("2026-09-09", "2026-12-31", "2027-01-09", "nope")},
+        "name_keys": {name: h.name_key(name) for name in HISTORY_NAMES},
+        "week5": week5,
+        "unresolved": unresolved_out,
+        "kick_lines": kicks,
+        "projection_weeks": projection_weeks,
+        "matches": matches,
+        "weeks": weeks,
+        "schedule": {club: {str(w): fixture(f) for w, f in clubs.items()} for club, clubs in schedule.items()},
+        "season_weeks": h.season_weeks(schedule),
+        "projections": projections_w1,
+        "seasons": seasons,
+        "urls": {
+            "seed_week_8": h.seed_week_url(LEAGUE_ID, 8),
+            "espn_players": h.espn_players_url(2026),
+            "espn_players_filter": h.ESPN_PLAYERS_FILTER,
+            "espn_stats": h.espn_stats_url(2026),
+            "espn_stats_filter": h.espn_stats_filter(4431452),
+            "espn_schedule": h.espn_schedule_url(2026),
+        },
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--ha-repo", default="../ha-ffl-yahoo", type=Path)
@@ -467,7 +597,8 @@ def main() -> None:
 
     _write(args.out / "static.json", static_golden(fixtures))
     _write(args.out / "scenario.json", scenario_golden(fixtures))
-    print(f"wrote {args.out}/static.json and scenario.json")
+    _write(args.out / "history.json", history_golden(fixtures))
+    print(f"wrote {args.out}/static.json, scenario.json and history.json")
 
 
 if __name__ == "__main__":

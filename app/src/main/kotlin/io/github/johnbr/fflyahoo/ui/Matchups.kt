@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import io.github.johnbr.fflyahoo.core.history.History
 import io.github.johnbr.fflyahoo.core.present.Present
 import io.github.johnbr.fflyahoo.core.state.MatchupDetail
 import io.github.johnbr.fflyahoo.core.state.MatchupRow
@@ -53,7 +54,7 @@ import java.time.Instant
 import java.time.ZoneId
 
 /** Which panel a matchup row has open — one at a time, across the whole screen. */
-enum class Panel { ROSTER, PLAYS }
+enum class Panel { ROSTER, PLAYS, PLAYER }
 
 @Composable
 fun trendColor(trend: Present.Trend?): Color = when (trend) {
@@ -66,7 +67,8 @@ fun trendColor(trend: Present.Trend?): Color = when (trend) {
 /**
  * One matchup: home name, both scores, away name; under it the play that last moved THIS score, in
  * the column of the side that scored it, with both live projections between. Tapping the row opens
- * the rosters, tapping the play opens the scoring history.
+ * the rosters, tapping the play opens the scoring history, and tapping a player in the rosters swaps
+ * them for his season.
  */
 @Composable
 fun MatchupRowView(
@@ -76,6 +78,9 @@ fun MatchupRowView(
     detail: MatchupDetail?,
     history: List<PlayRow>?,
     single: Boolean = false,
+    season: Result<History.PlayerSeason>? = null,
+    onPlayer: (String) -> Unit = {},
+    onBack: () -> Unit = {},
 ) {
     val expandedBg = if (open != null) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
     Column(Modifier.fillMaxWidth().background(expandedBg)) {
@@ -104,9 +109,10 @@ fun MatchupRowView(
                     Panel.ROSTER -> {
                         Projections(row)
                         WinBar(row)
-                        if (detail == null) Loading("Loading rosters…") else Rosters(detail)
+                        if (detail == null) Loading("Loading rosters…") else Rosters(detail, onPlayer)
                     }
                     Panel.PLAYS -> if (history == null) Loading("Loading plays…") else History(history)
+                    Panel.PLAYER -> SeasonView(season, onBack)
                     null -> {}
                 }
             }
@@ -233,12 +239,12 @@ private fun WinBar(row: MatchupRow) {
 
 /** Both teams facing each other, one shared column of slot chips down the middle, paired by index. */
 @Composable
-fun Rosters(detail: MatchupDetail) {
+fun Rosters(detail: MatchupDetail, onPlayer: (String) -> Unit = {}) {
     if (detail.sides.size < 2) {
         Loading("No roster available for this matchup yet.")
         return
     }
-    Lineup(detail.sides[0].starters, detail.sides[1].starters)
+    Lineup(detail.sides[0].starters, detail.sides[1].starters, onPlayer)
     val benchCount = maxOf(detail.sides[0].bench.size, detail.sides[1].bench.size)
     if (benchCount > 0) {
         var benchOpen by remember { mutableStateOf(false) }
@@ -248,12 +254,12 @@ fun Rosters(detail: MatchupDetail) {
             fontSize = 13.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (benchOpen) Lineup(detail.sides[0].bench, detail.sides[1].bench)
+        if (benchOpen) Lineup(detail.sides[0].bench, detail.sides[1].bench, onPlayer)
     }
 }
 
 @Composable
-private fun Lineup(home: List<PlayerRow>, away: List<PlayerRow>) {
+private fun Lineup(home: List<PlayerRow>, away: List<PlayerRow>, onPlayer: (String) -> Unit) {
     val now = Instant.now()
     val zone = ZoneId.systemDefault()
     for (i in 0 until maxOf(home.size, away.size)) {
@@ -261,9 +267,9 @@ private fun Lineup(home: List<PlayerRow>, away: List<PlayerRow>) {
         val a = away.getOrNull(i)
         val slot = h?.slot?.ifEmpty { null } ?: a?.slot ?: ""
         Row(Modifier.fillMaxWidth().padding(vertical = 1.dp), verticalAlignment = Alignment.Top) {
-            PlayerBlock(h, home = true, now, zone, Modifier.weight(1f))
+            PlayerBlock(h, home = true, now, zone, Modifier.weight(1f), onPlayer)
             SlotChip(slot)
-            PlayerBlock(a, home = false, now, zone, Modifier.weight(1f))
+            PlayerBlock(a, home = false, now, zone, Modifier.weight(1f), onPlayer)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     }
@@ -285,7 +291,7 @@ private fun SlotChip(slot: String) {
 
 /** A player: name (club) + badges, game line, stat line; points over projection toward the slot chip. */
 @Composable
-private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: ZoneId, modifier: Modifier) {
+private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: ZoneId, modifier: Modifier, onPlayer: (String) -> Unit) {
     if (player == null) {
         Spacer(modifier)
         return
@@ -304,7 +310,12 @@ private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: Z
     val align = if (home) Alignment.Start else Alignment.End
     val textAlign = if (home) TextAlign.Start else TextAlign.End
     Row(
-        modifier.clip(RoundedCornerShape(4.dp)).background(bg).padding(horizontal = 4.dp, vertical = 2.dp),
+        modifier
+            .clip(RoundedCornerShape(4.dp))
+            // The whole block opens his season: the only target a thumb finds on a phone-width lineup.
+            .clickable(onClickLabel = "Season") { onPlayer(player.playerId) }
+            .background(bg)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
         horizontalArrangement = if (home) Arrangement.Start else Arrangement.End,
     ) {
         val text = @Composable { m: Modifier ->
@@ -413,4 +424,81 @@ fun History(plays: List<PlayRow>) {
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     }
+}
+
+/**
+ * A player's season, week by week — the opponent (or bye), Yahoo's projection, and the points — in
+ * place of the lineup it was opened from. A finished week's points are ESPN's stat line under the
+ * league's scoring (see History); "≈" marks one the league's scoring could not be applied to exactly,
+ * and "—" a number there is none of.
+ */
+@Composable
+fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit) {
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "‹ Lineup",
+            Modifier.clickable(onClick = onBack).padding(end = 12.dp, top = 4.dp, bottom = 4.dp),
+            color = MaterialTheme.colorScheme.primary,
+            fontSize = 13.sp,
+        )
+        season?.getOrNull()?.let { s ->
+            Text(
+                listOf(s.name, if (s.nflTeam.isNotEmpty()) "(${s.nflTeam})" else "", s.position).filter { it.isNotEmpty() }.joinToString(" "),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+    val s = when {
+        season == null -> return Loading("Loading season…")
+        season.isFailure -> return Loading("Couldn't load this player's season.")
+        else -> season.getOrThrow()
+    }
+    val totals = s.totals
+    Text(
+        listOfNotNull(
+            "${Present.points(totals.points)} pts",
+            totals.average?.let { "${Present.points(it)} a week" },
+            totals.projectedRemaining.takeIf { it > 0 }?.let { "${Present.points(it)} projected to come" },
+        ).joinToString(" · "),
+        fontSize = 12.sp,
+        color = muted,
+        modifier = Modifier.padding(bottom = 4.dp),
+    )
+    SeasonLine("Wk", "Opp", "Proj", "Pts", header = true)
+    for (row in s.rows) {
+        if (row.status == "bye") {
+            SeasonLine(row.week.toString(), "Bye", "", "", dim = true)
+            continue
+        }
+        val approx = if (row.points != null && !row.exact) "≈" else ""
+        SeasonLine(
+            row.week.toString(),
+            row.opponent,
+            Present.points(row.projected),
+            if (row.status == "upcoming") "" else approx + Present.points(row.points),
+            live = row.status == "live",
+            dim = row.status == "upcoming",
+        )
+    }
+    Text("Past weeks' points: ESPN's stat lines, scored with your league's settings.", fontSize = 11.sp, color = muted, modifier = Modifier.padding(top = 6.dp))
+    if (!s.matched) {
+        Text("ESPN has no match for this player, so past weeks show projections only.", fontSize = 11.sp, color = muted)
+    }
+}
+
+@Composable
+private fun SeasonLine(week: String, opponent: String, projected: String, points: String, header: Boolean = false, live: Boolean = false, dim: Boolean = false) {
+    val color = if (header || dim) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+    val size = if (header) 11.sp else 13.sp
+    val bg = if (live) LocalFfl.current.liveTint else Color.Transparent
+    Row(Modifier.fillMaxWidth().background(bg).padding(vertical = 3.dp, horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(week, Modifier.width(32.dp), fontSize = size, color = color)
+        Text(opponent, Modifier.weight(1f), fontSize = size, color = color)
+        Text(projected, Modifier.width(64.dp), fontSize = size, color = color, textAlign = TextAlign.End)
+        Text(points, Modifier.width(64.dp), fontSize = size, color = color, textAlign = TextAlign.End, fontWeight = if (header) FontWeight.Normal else FontWeight.Bold)
+    }
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }

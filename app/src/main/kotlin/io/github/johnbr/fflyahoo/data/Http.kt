@@ -2,6 +2,7 @@ package io.github.johnbr.fflyahoo.data
 
 import io.github.johnbr.fflyahoo.core.client.ConditionalFetcher
 import io.github.johnbr.fflyahoo.core.client.Fetcher
+import io.github.johnbr.fflyahoo.core.client.HeaderFetcher
 import io.github.johnbr.fflyahoo.core.client.USER_AGENT
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -17,18 +18,28 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /**
- * The network, for the engine: Yahoo's anonymous GameChannel endpoints only — no cookies, no account,
- * one identifiable User-Agent. OkHttp asks for gzip and decodes it transparently.
+ * The network, for the engine: Yahoo's anonymous GameChannel endpoints, and for a player's season ESPN's
+ * anonymous fantasy API — no cookies, no account, one identifiable User-Agent. OkHttp asks for gzip and
+ * decodes it transparently.
  */
 class OkHttpFetcher(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .callTimeout(30, TimeUnit.SECONDS)
         .cache(null) // conditional requests are the engine's job, see RelayClient.plays
         .build(),
-) : Fetcher, ConditionalFetcher {
+) : Fetcher, ConditionalFetcher, HeaderFetcher {
     override suspend fun fetch(url: String): String {
         val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
         return client.newCall(request).await().use { response ->
+            if (!response.isSuccessful) throw IOException("HTTP ${response.code} from $url")
+            withContext(Dispatchers.IO) { response.body.string() }
+        }
+    }
+
+    override suspend fun fetch(url: String, headers: Map<String, String>): String {
+        val builder = Request.Builder().url(url).header("User-Agent", USER_AGENT)
+        for ((name, value) in headers) builder.header(name, value)
+        return client.newCall(builder.build()).await().use { response ->
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} from $url")
             withContext(Dispatchers.IO) { response.body.string() }
         }
