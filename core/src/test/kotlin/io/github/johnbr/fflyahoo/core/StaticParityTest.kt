@@ -15,6 +15,7 @@ import io.github.johnbr.fflyahoo.core.state.Scoreboard
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.int
@@ -41,6 +42,15 @@ class StaticParityTest {
 
     private fun strings(map: Map<String, String>) = encode(MapSerializer(String.serializer(), String.serializer()), map)
 
+    /** The seed saying another week, as `parity_dump.with_week_info` does; the rosters are beside the point. */
+    private fun withWeekInfo(weekInfo: JsonObject?): JsonObject {
+        if (weekInfo == null) return seed
+        val service = seed.getValue("service").jsonObject
+        val leagues = service.getValue("leagues").jsonObject
+        val league = JsonObject(leagues.getValue(leagueId).jsonObject + ("weekInfo" to weekInfo))
+        return JsonObject(seed + ("service" to JsonObject(service + ("leagues" to JsonObject(leagues + (leagueId to league))))))
+    }
+
     @Test
     fun `league name, team choices and scoring modifiers`() {
         assertEquals(golden.getValue("league_name").jsonPrimitive.content, leagueName)
@@ -56,7 +66,8 @@ class StaticParityTest {
             val gamesFile = expected["games_file"]?.jsonPrimitive?.contentOrNull
             val gamesText = gamesFile?.let(Golden::fixture) ?: ""
             val now = expected.getValue("now").jsonPrimitive.double
-            val data = Seed.leagueFromPayloads(seed, statsText, gamesText, leagueId, now)
+            val weekInfo = expected["week_info"] as? JsonObject
+            val data = Seed.leagueFromPayloads(withWeekInfo(weekInfo), statsText, gamesText, leagueId, now)
 
             assertSame(expected["scoreboard"], encode(Scoreboard.serializer(), LeagueState.scoreboard(data, PlayFeed(), leagueId, leagueName)), "$label scoreboard")
             assertSame(expected["nfl"], encode(NflGames.serializer(), LeagueState.nflGames(data, leagueId)), "$label NFL slate")
