@@ -177,16 +177,41 @@ class MatchupWidget : GlanceAppWidget() {
             fun measure(context: Context, points: List<String>, projected: List<String>): Columns {
                 val metrics = context.resources.displayMetrics
                 fun column(texts: List<String>, size: TextUnit, bold: Boolean): Cells {
-                    val paint = Paint().apply {
-                        textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, size.value, metrics)
-                        typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+                    val style = if (bold) Typeface.BOLD else Typeface.NORMAL
+                    val paints = listOf(Typeface.defaultFromStyle(style), widgetTypeface(context, style)).map { face ->
+                        Paint().apply {
+                            textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, size.value, metrics)
+                            typeface = face
+                        }
                     }
-                    fun widest(parts: List<String>) = (parts.maxOf { paint.measureText(it) } / metrics.density).dp
+                    // A cell too narrow for its text is ellipsized, which turned "0.00" into "0.…": measured
+                    // in both fonts it may be drawn in, it is as wide as the wider of them needs.
+                    fun widest(parts: List<String>) =
+                        (parts.maxOf { part -> paints.maxOf { it.measureText(part) } } / metrics.density).dp
                     val split = texts.map(::split)
                     // A little slack on each cell for rounding; the gap goes before the whole part.
                     return Cells(widest(split.map { it.first }) + GAP + 2.dp, widest(split.map { it.second }) + 2.dp)
                 }
                 return Columns(column(points, POINTS_SIZE, bold = true), column(projected, PROJECTED_SIZE, bold = false))
+            }
+
+            /**
+             * The font the home screen draws the widget's text in. Glance's text views name no font, so they
+             * take the host theme's device-default text appearance — Google Sans Text on a Pixel — and not
+             * this app's [Typeface.DEFAULT], which is Roboto there. Its digits are not all one width: a bold
+             * `.00` is wider than Roboto's, which is what [measure] had been sizing the cell for.
+             */
+            private fun widgetTypeface(context: Context, style: Int): Typeface {
+                val attrs = context.obtainStyledAttributes(
+                    android.R.style.TextAppearance_DeviceDefault,
+                    intArrayOf(android.R.attr.fontFamily),
+                )
+                val family = try {
+                    attrs.getString(0)
+                } finally {
+                    attrs.recycle()
+                }
+                return if (family.isNullOrBlank()) Typeface.defaultFromStyle(style) else Typeface.create(family, style)
             }
         }
     }
