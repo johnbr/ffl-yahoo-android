@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.5.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.5.0...v0.5.1) (2026-10-15)
+
+
+### Bug Fixes
+
+* score a new week on its own games, not the last week's stat lines ([#19](https://github.com/johnbr/ffl-yahoo-android/issues/19)) ([fcce125](https://github.com/johnbr/ffl-yahoo-android/commit/fcce1258e9fb174028210ae0f41a8b897a948870))
+* size the widget's score cells for the font the home screen draws them in ([#20](https://github.com/johnbr/ffl-yahoo-android/issues/20)) ([963ba45](https://github.com/johnbr/ffl-yahoo-android/commit/963ba451a8b4fd3e520897a2e32754c157627cd8))
+
 ## [0.5.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.4.1...v0.5.0) (2026-10-13)
 
 
