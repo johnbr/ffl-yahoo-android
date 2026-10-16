@@ -26,7 +26,8 @@ import java.time.format.DateTimeParseException
  *
  * * Yahoo's league seed for each week (`&week=N`): every rostered player's projection for that week.
  * * ESPN's fantasy API: every player's raw stat line per week, scored here with the league's own
- *   modifiers by the same [Scoring.score] the live totals use.
+ *   modifiers by the same [Scoring.score] the live totals use; and ESPN's projected line per week,
+ *   scored the same way, for a week the player was on no roster here and so has no Yahoo projection.
  * * ESPN's NFL schedule: each club's opponent every week, and its bye. ESPN numbers the clubs as Yahoo
  *   does.
  *
@@ -48,19 +49,23 @@ object History {
     /** One player's weekly stat lines; [espnStatsFilter] says which player. */
     fun espnStatsUrl(season: Int): String = "$ESPN_READS/$season/segments/0/leaguedefaults/3?view=kona_player_info"
 
-    /** The `X-Fantasy-Filter` header for one player's actual (not projected) weekly lines. */
+    /** ESPN's `statSourceId`: what a player did, and what ESPN projected him to do. */
+    const val ESPN_ACTUAL = 0
+    const val ESPN_PROJECTED = 1
+
+    /** The `X-Fantasy-Filter` header for one player's weekly lines, actual and projected. */
     fun espnStatsFilter(espnId: Long): String = buildJsonObject {
         put(
             "players",
             buildJsonObject {
                 put("filterIds", valueOf(espnId))
-                put("filterStatsForSourceIds", valueOf(0))
+                put("filterStatsForSourceIds", valueOf(ESPN_ACTUAL.toLong(), ESPN_PROJECTED.toLong()))
                 put("filterStatsForSplitTypeIds", valueOf(1))
             },
         )
     }.toString()
 
-    private fun valueOf(n: Long) = buildJsonObject { put("value", buildJsonArray { add(JsonPrimitive(n)) }) }
+    private fun valueOf(vararg n: Long) = buildJsonObject { put("value", buildJsonArray { for (v in n) add(JsonPrimitive(v)) }) }
 
     private fun valueOf(n: Int) = valueOf(n.toLong())
 
@@ -136,8 +141,16 @@ object History {
         return alike.singleOrNull()
     }
 
-    /** `{week: ESPN's raw stat line}` for the weeks this player has one; a missing week is a bye or a blank. */
-    fun parseEspnWeeks(payload: JsonElement?, espnId: Long, season: Int): Map<Int, Map<String, Double>> {
+    /**
+     * `{week: ESPN's raw stat line}` for the weeks this player has one; a missing actual week is a bye or a
+     * blank. [ESPN_PROJECTED] reads the projected lines instead: every week, past ones too, a bye's empty.
+     */
+    fun parseEspnWeeks(
+        payload: JsonElement?,
+        espnId: Long,
+        season: Int,
+        source: Int = ESPN_ACTUAL,
+    ): Map<Int, Map<String, Double>> {
         val weeks = LinkedHashMap<Int, Map<String, Double>>()
         val players = (payload as? JsonObject)?.get("players") as? JsonArray ?: return weeks
         for (entry in players) {
@@ -148,7 +161,7 @@ object History {
             for (line in player["stats"] as? JsonArray ?: continue) {
                 val l = line as? JsonObject ?: continue
                 fun int(key: String) = (l[key] as? JsonPrimitive)?.intOrNull
-                if (int("seasonId") != season || int("statSourceId") != 0 || int("statSplitTypeId") != 1) continue
+                if (int("seasonId") != season || int("statSourceId") != source || int("statSplitTypeId") != 1) continue
                 val week = int("scoringPeriodId") ?: 0
                 if (week <= 0) continue
                 val stats = LinkedHashMap<String, Double>()
@@ -329,8 +342,13 @@ object History {
         val opponent: String,
         val home: Boolean?,
         val kickoff: Double?,
-        /** Null for a week he was on no roster in this league. */
+        /**
+         * Yahoo's; for a week he was on no roster in this league, which Yahoo does not project, ESPN's
+         * projected line under the league's scoring; null when neither has one.
+         */
         val projected: Double?,
+        /** `yahoo` or `espn`, whichever [projected] is; null with it. */
+        val projectedSource: String?,
         /** Null for a week to come, or a finished one ESPN has no player to match for. */
         val points: Double?,
         val exact: Boolean,
@@ -369,13 +387,23 @@ object History {
         fixtures: Map<Int, Fixture>,
         modifiers: Map<String, Double>,
         livePoints: Double?,
+        espnProjections: Map<Int, Map<String, Double>>? = null,
     ): List<SeasonRow> {
         val unresolved = unresolvedStats(modifiers)
         return weeks.map { week ->
             val fixture = fixtures[week]
-                ?: return@map SeasonRow(week, "bye", "BYE", null, null, null, null, true)
+                ?: return@map SeasonRow(week, "bye", "BYE", null, null, null, null, null, true)
             val opponent = Relay.teamAbbr(fixture.opponentId)
-            val projected = projections[week]?.get(identity.playerId)
+            val yahoo = projections[week]?.get(identity.playerId)
+            val espnLine = espnProjections?.get(week)
+            val (projected, source) = when {
+                yahoo != null -> yahoo to "yahoo"
+                // An empty line is ESPN projecting nothing, a player ruled out. Scored, a defence's would
+                // read as a shutout.
+                espnLine != null ->
+                    (if (espnLine.isEmpty()) 0.0 else weekPoints(espnLine, identity.defense, modifiers, unresolved).first) to "espn"
+                else -> null to null
+            }
             val label = if (fixture.home) "vs $opponent" else "@ $opponent"
             when {
                 week < currentWeek -> {
@@ -391,10 +419,11 @@ object History {
                             exact = e
                         }
                     }
-                    SeasonRow(week, "final", label, fixture.home, fixture.kickoff, projected, points, exact)
+                    SeasonRow(week, "final", label, fixture.home, fixture.kickoff, projected, source, points, exact)
                 }
-                week == currentWeek -> SeasonRow(week, "live", label, fixture.home, fixture.kickoff, projected, livePoints, true)
-                else -> SeasonRow(week, "upcoming", label, fixture.home, fixture.kickoff, projected, null, true)
+                week == currentWeek ->
+                    SeasonRow(week, "live", label, fixture.home, fixture.kickoff, projected, source, livePoints, true)
+                else -> SeasonRow(week, "upcoming", label, fixture.home, fixture.kickoff, projected, source, null, true)
             }
         }
     }

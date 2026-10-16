@@ -533,10 +533,14 @@ def history_golden(fixtures: Path):
         label: {str(w): line for w, line in h.parse_espn_weeks(stats, espn_id, 2026).items()}
         for label, espn_id in HISTORY_PLAYERS.items()
     }
+    projected_weeks = {
+        label: {str(w): line for w, line in h.parse_espn_weeks(stats, espn_id, 2026, h.ESPN_PROJECTED).items()}
+        for label, espn_id in HISTORY_PLAYERS.items()
+    }
 
     projections_w1 = h.week_projections(seed, LEAGUE_ID)
     # The week-1 projections standing in for a few weeks of the season; the weeks left out had the
-    # player on no roster.
+    # player on no roster, and take ESPN's projection when he is matched.
     projection_weeks = [1, 3, 5, 6, 7, 8, 12, 18]
     projections = {week: projections_w1 for week in projection_weeks}
     seasons = {}
@@ -551,8 +555,9 @@ def history_golden(fixtures: Path):
         mods = variants[scoring]
         who = h.player_identity(seed, LEAGUE_ID, player_id)
         actuals = h.parse_espn_weeks(stats, espn_id, 2026) if espn_id is not None else None
+        espn = h.parse_espn_weeks(stats, espn_id, 2026, h.ESPN_PROJECTED) if espn_id is not None else None
         rows = h.season_rows(who, h.season_weeks(schedule), current, projections, actuals,
-                             schedule.get(who.team_id, {}), mods, live)
+                             schedule.get(who.team_id, {}), mods, live, espn)
         seasons[label] = {
             "player_id": player_id, "espn_id": espn_id, "current": current, "live": live,
             "modifiers": scoring,
@@ -570,6 +575,7 @@ def history_golden(fixtures: Path):
         "projection_weeks": projection_weeks,
         "matches": matches,
         "weeks": weeks,
+        "projected_weeks": projected_weeks,
         "schedule": {club: {str(w): fixture(f) for w, f in clubs.items()} for club, clubs in schedule.items()},
         "season_weeks": h.season_weeks(schedule),
         "projections": projections_w1,
