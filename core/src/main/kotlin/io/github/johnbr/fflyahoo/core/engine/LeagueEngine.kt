@@ -4,7 +4,10 @@ import io.github.johnbr.fflyahoo.core.LeagueData
 import io.github.johnbr.fflyahoo.core.STALE_AFTER_SECONDS
 import io.github.johnbr.fflyahoo.core.YahooError
 import io.github.johnbr.fflyahoo.core.client.LeagueSource
+import io.github.johnbr.fflyahoo.core.client.PlayerNotRostered
+import io.github.johnbr.fflyahoo.core.client.SeasonHistory
 import io.github.johnbr.fflyahoo.core.client.attempt
+import io.github.johnbr.fflyahoo.core.history.History
 import io.github.johnbr.fflyahoo.core.live.Landed
 import io.github.johnbr.fflyahoo.core.live.Pending
 import io.github.johnbr.fflyahoo.core.live.PendingPlays
@@ -92,6 +95,8 @@ class LeagueEngine(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default.limitedParallelism(1),
     /** Re-read awaited play feeds between polls. Off only in tests that replay polls one by one. */
     private val chaseBetweenPolls: Boolean = true,
+    /** A player's season, opened from the lineup; null leaves [playerSeason] unavailable. */
+    private val season: SeasonHistory? = null,
 ) {
     val leagueId: String get() = source.leagueId
 
@@ -398,6 +403,20 @@ class LeagueEngine(
     suspend fun matchupDetail(matchupIndex: Int): MatchupDetail = withContext(dispatcher) {
         val current = data ?: return@withContext MatchupDetail(null, emptyList())
         LeagueState.playerRows(current, matchupIndex - 1).copy(week = current.week)
+    }
+
+    /**
+     * A rostered player's season, week by week — the lineup's player panel. Goes to the network the first
+     * time (a season of seeds and ESPN's lines; see [SeasonHistory]), outside the engine's own dispatcher so
+     * it never holds up a poll.
+     */
+    suspend fun playerSeason(playerId: String): History.PlayerSeason {
+        val history = season ?: throw IllegalStateException("no season history for league $leagueId")
+        val (week, live) = withContext(dispatcher) {
+            val current = data ?: throw PlayerNotRostered(playerId)
+            current.week to current.matchups.flatMap { it.players }.firstOrNull { it.playerId == playerId }?.points
+        }
+        return history.player(playerId, week, live, clock())
     }
 
     /** The week's scoring history, newest first. Deliberately no live-game filter: this is the record. */

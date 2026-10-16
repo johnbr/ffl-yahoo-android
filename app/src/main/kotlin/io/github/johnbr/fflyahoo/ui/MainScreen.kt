@@ -52,7 +52,9 @@ import io.github.johnbr.fflyahoo.core.present.Present
 import io.github.johnbr.fflyahoo.core.state.MatchupDetail
 import io.github.johnbr.fflyahoo.core.state.NflGameRow
 import io.github.johnbr.fflyahoo.core.state.NflPlayRow
+import io.github.johnbr.fflyahoo.core.history.History
 import io.github.johnbr.fflyahoo.core.state.PlayRow
+import kotlinx.coroutines.CancellationException
 import io.github.johnbr.fflyahoo.data.AppSettings
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -177,11 +179,21 @@ fun Centered(text: String) {
 /** The open panel and its data, shared by the matchup tabs: one panel open at a time. */
 private class MatchupPanels {
     var open by mutableStateOf<Pair<String, Panel>?>(null)
+    /** The player whose season the PLAYER panel shows. */
+    var player by mutableStateOf<String?>(null)
     val details = mutableStateMapOf<String, MatchupDetail>()
     val histories = mutableStateMapOf<String, List<PlayRow>>()
+    val seasons = mutableStateMapOf<String, Result<History.PlayerSeason>>()
 
     fun toggle(matchupId: String, panel: Panel) {
-        open = if (open == matchupId to panel) null else matchupId to panel
+        // A player's season is a view inside the lineup, so the row that closes the lineup closes it too.
+        val showing = open?.let { (id, p) -> id to (if (p == Panel.PLAYER) Panel.ROSTER else p) }
+        open = if (showing == matchupId to panel) null else matchupId to panel
+    }
+
+    fun openPlayer(matchupId: String, playerId: String) {
+        player = playerId
+        open = matchupId to Panel.PLAYER
     }
 }
 
@@ -198,6 +210,18 @@ private fun rememberPanels(ui: LeagueUi, engine: LeagueEngine?): MatchupPanels {
         when (panel) {
             Panel.ROSTER -> panels.details[matchupId] = engine.matchupDetail(row.index)
             Panel.PLAYS -> panels.histories[matchupId] = engine.playHistory(matchupId)
+            Panel.PLAYER -> {
+                val playerId = panels.player ?: return@LaunchedEffect
+                val loaded = try {
+                    Result.success(engine.playerSeason(playerId))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Result.failure(e)
+                }
+                // A failed refresh never replaces a season already on screen.
+                if (loaded.isSuccess || panels.seasons[playerId]?.isSuccess != true) panels.seasons[playerId] = loaded
+            }
         }
     }
     return panels
@@ -224,6 +248,9 @@ private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?) {
                     detail = panels.details[row.matchupId],
                     history = panels.histories[row.matchupId],
                     single = true,
+                    season = panels.player?.let { panels.seasons[it] },
+                    onPlayer = { panels.openPlayer(row.matchupId, it) },
+                    onBack = { panels.open = row.matchupId to Panel.ROSTER },
                 )
             }
         }
@@ -255,6 +282,9 @@ private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?) {
                 onToggle = { panels.toggle(row.matchupId, it) },
                 detail = panels.details[row.matchupId],
                 history = panels.histories[row.matchupId],
+                season = panels.player?.let { panels.seasons[it] },
+                onPlayer = { panels.openPlayer(row.matchupId, it) },
+                onBack = { panels.open = row.matchupId to Panel.ROSTER },
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }
@@ -346,7 +376,8 @@ private fun LazyListScope.nflGames(rows: List<NflGameRow>, now: Double, panels: 
 private fun LazyListScope.footer() {
     item(key = "footer") {
         Text(
-            "Fantasy data provided by Yahoo Fantasy. Not affiliated with, endorsed by, or sponsored by Yahoo or the NFL.",
+            "Fantasy data provided by Yahoo Fantasy; past weeks' stat lines and the schedule by ESPN. " +
+                "Not affiliated with, endorsed by, or sponsored by Yahoo, ESPN or the NFL.",
             Modifier.fillMaxWidth().padding(16.dp),
             fontSize = 11.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

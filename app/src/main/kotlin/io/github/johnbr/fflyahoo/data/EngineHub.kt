@@ -3,8 +3,11 @@ package io.github.johnbr.fflyahoo.data
 import android.content.Context
 import io.github.johnbr.fflyahoo.core.client.LeagueSource
 import io.github.johnbr.fflyahoo.core.client.RelayClient
+import io.github.johnbr.fflyahoo.core.client.SeasonHistory
 import io.github.johnbr.fflyahoo.core.client.SeedClient
 import io.github.johnbr.fflyahoo.core.engine.LeagueEngine
+import io.github.johnbr.fflyahoo.core.history.History
+import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,6 +88,7 @@ class EngineHub(
                 scope = scope,
                 leagueName = league.name,
                 teamId = league.teamId,
+                season = seasonFor(league.leagueId),
             )
             engine.loadHistory()
             keys[league.leagueId] = key
@@ -94,8 +98,22 @@ class EngineHub(
             keys.remove(gone)
             runners.remove(gone)?.cancel()
             FileHistoryStore(context, gone).delete()
+            FileSeasonStore(context, gone).delete()
         }
         _engines.value = next
+    }
+
+    /** A league's player seasons, with its finished weeks' projections read back from the file they were saved to. */
+    private suspend fun seasonFor(leagueId: String): SeasonHistory {
+        val store = FileSeasonStore(context, leagueId)
+        lateinit var season: SeasonHistory
+        // Snapshotted where SeasonHistory calls it, under its own lock; only the write is left for later.
+        season = SeasonHistory(fetch, fetch, leagueId, save = {
+            val json = season.toJson().toString()
+            scope.launch { store.save(json) }
+        })
+        runCatching { store.load()?.let { season.load(History.parse(it) as? JsonObject) } }
+        return season
     }
 
     /** Start polling on behalf of [owner] (if nothing else already is). */
