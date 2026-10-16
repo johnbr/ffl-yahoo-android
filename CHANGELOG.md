@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.6.0...v0.6.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* project a player's free-agent weeks from ESPN, and colour his points against the projection ([#24](https://github.com/johnbr/ffl-yahoo-android/issues/24)) ([d4ddf37](https://github.com/johnbr/ffl-yahoo-android/commit/d4ddf375231f18d601d5436a0ffbda85c812385c))
+
 ## [0.6.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.5.1...v0.6.0) (2026-10-16)
 
 
