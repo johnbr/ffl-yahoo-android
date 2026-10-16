@@ -56,7 +56,12 @@ class SeasonHistoryTest {
         override suspend fun fetch(url: String): String = serve(url)
 
         override suspend fun fetch(url: String, headers: Map<String, String>): String {
-            assertTrue("X-Fantasy-Filter" in headers)
+            val filter = headers.getValue("X-Fantasy-Filter")
+            if (url == History.espnStatsUrl(2026)) {
+                // Actual and projected lines, in the one request.
+                val sources = History.parse(filter).jsonObject.getValue("players").jsonObject.getValue("filterStatsForSourceIds")
+                assertEquals("[0,1]", sources.jsonObject.getValue("value").toString())
+            }
             return serve(url)
         }
 
@@ -81,6 +86,7 @@ class SeasonHistoryTest {
         assertEquals(45.96, rows.getValue(5).points)
         assertEquals("live", rows.getValue(6).status)
         assertNotNull(rows.getValue(7).projected)
+        assertEquals("yahoo", rows.getValue(7).projectedSource)
         assertEquals(18, fake.seeds())
         assertTrue(saved > 0)
     }
@@ -128,9 +134,20 @@ class SeasonHistoryTest {
     }
 
     @Test
-    fun `a missing week's seed is a blank column`() {
+    fun `a week without Yahoo's projection takes ESPN's`() {
         val s = season(history(Fake(fail = listOf(History.seedWeekUrl(league, 9)))))
-        assertNull(s.rows.first { it.week == 9 }.projected)
+        val nine = s.rows.first { it.week == 9 }
+        assertEquals("espn", nine.projectedSource)
+        assertTrue(nine.projected!! > 0)
+        assertEquals("yahoo", s.rows.first { it.week == 10 }.projectedSource)
+    }
+
+    @Test
+    fun `with neither projection the week is blank`() {
+        val s = season(history(Fake(fail = listOf(History.seedWeekUrl(league, 9), History.espnPlayersUrl(2026)))))
+        val nine = s.rows.first { it.week == 9 }
+        assertNull(nine.projected)
+        assertNull(nine.projectedSource)
         assertNotNull(s.rows.first { it.week == 10 }.projected)
     }
 

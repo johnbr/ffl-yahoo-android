@@ -25,7 +25,7 @@ fun interface HeaderFetcher {
 /** This week's and future weeks' projections move with injury news. */
 const val PROJECTION_TTL_SECONDS = 6 * 3600.0
 
-/** A player's ESPN lines: corrections land in the days after a game. */
+/** A player's ESPN lines, actual and projected in one request: corrections land in the days after a game. */
 const val ESPN_TTL_SECONDS = 6 * 3600.0
 
 /** ESPN's player list and the schedule. */
@@ -59,7 +59,7 @@ class SeasonHistory(
     private var current: Kept<Pair<Int, JsonObject>>? = null
     private var schedule: Kept<Pair<Int, Map<String, Map<Int, History.Fixture>>>>? = null
     private var players: Kept<Pair<Int, List<History.EspnPlayer>>>? = null
-    private val lines = HashMap<Long, Kept<Map<Int, Map<String, Double>>>>()
+    private val lines = HashMap<Long, Kept<EspnLines>>()
     private val lock = Mutex()
 
     // --- persistence --------------------------------------------------------------------------------
@@ -105,12 +105,12 @@ class SeasonHistory(
             val clubs = scheduleFor(year, now)
             val weeks = History.seasonWeeks(clubs)
             val projections = projections(weeks, currentWeek, now)
-            val actuals = actuals(identity, year, now)
-            Built(identity, year, modifiers, clubs, weeks, projections, actuals)
+            val espn = espnLines(identity, year, now)
+            Built(identity, year, modifiers, clubs, weeks, projections, espn?.actual, espn?.projected)
         }
         val rows = History.seasonRows(
             built.identity, built.weeks, currentWeek, built.projections, built.actuals,
-            built.clubs[built.identity.teamId] ?: emptyMap(), built.modifiers, livePoints,
+            built.clubs[built.identity.teamId] ?: emptyMap(), built.modifiers, livePoints, built.espnProjections,
         )
         return History.PlayerSeason(
             playerId = built.identity.playerId,
@@ -133,7 +133,11 @@ class SeasonHistory(
         val weeks: List<Int>,
         val projections: Map<Int, Map<String, Double>>,
         val actuals: Map<Int, Map<String, Double>>?,
+        val espnProjections: Map<Int, Map<String, Double>>?,
     )
+
+    /** One player's ESPN lines by week: what he did, and what ESPN projected. */
+    private class EspnLines(val actual: Map<Int, Map<String, Double>>, val projected: Map<Int, Map<String, Double>>)
 
     private suspend fun currentSeed(week: Int, now: Double): JsonObject {
         val kept = current
@@ -184,8 +188,8 @@ class SeasonHistory(
         }
     }
 
-    /** ESPN's weekly lines for the player, or null when ESPN cannot be read or matched. */
-    private suspend fun actuals(identity: History.Identity, year: Int, now: Double): Map<Int, Map<String, Double>>? =
+    /** ESPN's weekly lines for the player, or null when ESPN cannot be read or has no player to match. */
+    private suspend fun espnLines(identity: History.Identity, year: Int, now: Double): EspnLines? =
         attempt {
             var kept = players
             if (kept == null || kept.value.first != year || !kept.fresh(now, DIRECTORY_TTL_SECONDS)) {
@@ -198,7 +202,14 @@ class SeasonHistory(
             var found = lines[match.espnId]
             if (found == null || !found.fresh(now, ESPN_TTL_SECONDS)) {
                 val body = fetchWith.fetch(History.espnStatsUrl(year), mapOf("X-Fantasy-Filter" to History.espnStatsFilter(match.espnId)))
-                found = Kept(now, History.parseEspnWeeks(History.parse(body), match.espnId, year))
+                val payload = History.parse(body)
+                found = Kept(
+                    now,
+                    EspnLines(
+                        History.parseEspnWeeks(payload, match.espnId, year, History.ESPN_ACTUAL),
+                        History.parseEspnWeeks(payload, match.espnId, year, History.ESPN_PROJECTED),
+                    ),
+                )
                 lines[match.espnId] = found
             }
             found.value

@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.double
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.int
@@ -160,12 +161,14 @@ class HistoryParityTest {
         )
         assertSame(golden["season_weeks"], buildJsonArray { for (w in History.seasonWeeks(schedule)) add(JsonPrimitive(w)) }, "season weeks")
         assertSame(golden["projections"], doubleMap(History.weekProjections(seed, leagueId)), "projections")
-        for ((label, expected) in golden.getValue("weeks").jsonObject) {
-            val espnId = espnIdOf(label)
-            val actual = buildJsonObject {
-                for ((week, line) in History.parseEspnWeeks(stats, espnId, 2026)) put(week.toString(), doubleMap(line))
+        for ((key, source) in listOf("weeks" to History.ESPN_ACTUAL, "projected_weeks" to History.ESPN_PROJECTED)) {
+            for ((label, expected) in golden.getValue(key).jsonObject) {
+                val espnId = espnIdOf(label)
+                val actual = buildJsonObject {
+                    for ((week, line) in History.parseEspnWeeks(stats, espnId, 2026, source)) put(week.toString(), doubleMap(line))
+                }
+                assertSame(expected, actual, "$key $label")
             }
-            assertSame(expected, actual, "weeks $label")
         }
         val urls = golden.getValue("urls").jsonObject
         assertEquals(urls.getValue("seed_week_8").jsonPrimitive.content, History.seedWeekUrl(leagueId, 8))
@@ -204,13 +207,22 @@ class HistoryParityTest {
             val weekly = History.weekProjections(seed, leagueId)
             val projections = golden.getValue("projection_weeks").jsonArray.associate { it.jsonPrimitive.int to weekly }
             val actuals = espnId?.let { History.parseEspnWeeks(stats, it, 2026) }
+            val espn = espnId?.let { History.parseEspnWeeks(stats, it, 2026, History.ESPN_PROJECTED) }
             val rows = History.seasonRows(
                 identity, History.seasonWeeks(schedule), current, projections, actuals,
-                schedule[identity.teamId] ?: emptyMap(), modifiers, live,
+                schedule[identity.teamId] ?: emptyMap(), modifiers, live, espn,
             )
             assertSame(expected["rows"], encode(ListSerializer(History.SeasonRow.serializer()), rows), "$label rows")
             assertSame(expected["totals"], encode(History.SeasonTotals.serializer(), History.seasonTotals(rows)), "$label totals")
         }
+    }
+
+    @Test
+    fun `an empty projected line is nought, not a shutout`() {
+        // ESPN projecting nothing for a defence must not score the points-allowed-0 band.
+        val texans = History.Identity("100034", "Houston", "34", "DEF")
+        val rows = History.seasonRows(texans, listOf(1), 2, emptyMap(), emptyMap(), schedule.getValue("34"), variant("league"), null, mapOf(1 to emptyMap()))
+        assertEquals(0.0 to "espn", rows.single().projected to rows.single().projectedSource)
     }
 
     @Test
@@ -219,5 +231,8 @@ class HistoryParityTest {
         assertEquals(6, golden.getValue("seasons").jsonObject.size)
         assertEquals((1..18).toList(), golden.getValue("season_weeks").jsonArray.map { it.jsonPrimitive.int })
         assertEquals(115, (golden.getValue("week5") as JsonArray).size)
+        // Maye's season takes ESPN's projection for the weeks the golden gives Yahoo's none.
+        val maye = golden.getValue("seasons").jsonObject.getValue("maye").jsonObject.getValue("rows").jsonArray
+        assertEquals(setOf("yahoo", "espn"), maye.mapNotNull { (it.jsonObject["projected_source"] as? JsonPrimitive)?.contentOrNull }.toSet())
     }
 }

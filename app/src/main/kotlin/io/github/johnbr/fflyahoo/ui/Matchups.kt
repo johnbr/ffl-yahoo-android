@@ -431,6 +431,11 @@ fun History(plays: List<PlayRow>) {
  * place of the lineup it was opened from. A finished week's points are ESPN's stat line under the
  * league's scoring (see History); "≈" marks one the league's scoring could not be applied to exactly,
  * and "—" a number there is none of.
+ *
+ * Yahoo projects only the players on a roster in the league that week, so a week he was a free agent
+ * shows ESPN's projection instead, scored the same way and set in italics. A finished week's points are
+ * green above the projection and red below it — the lineup's colours — and left alone level with it;
+ * this week's are still running, so they stay uncoloured.
  */
 @Composable
 fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit) {
@@ -474,6 +479,7 @@ fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit) {
             continue
         }
         val approx = if (row.points != null && !row.exact) "≈" else ""
+        val versus = if (row.status == "final") Present.trend(row.points, row.projected) else null
         SeasonLine(
             row.week.toString(),
             row.opponent,
@@ -481,24 +487,49 @@ fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit) {
             if (row.status == "upcoming") "" else approx + Present.points(row.points),
             live = row.status == "live",
             dim = row.status == "upcoming",
+            espn = row.projectedSource == "espn",
+            pointsColor = if (versus == Present.Trend.UP || versus == Present.Trend.DOWN) trendColor(versus) else null,
         )
     }
     Text("Past weeks' points: ESPN's stat lines, scored with your league's settings.", fontSize = 11.sp, color = muted, modifier = Modifier.padding(top = 6.dp))
+    if (s.rows.any { it.projectedSource == "espn" }) {
+        Text("Italic projections: $SEASON_ESPN_PROJECTION", fontSize = 11.sp, color = muted)
+    }
     if (!s.matched) {
         Text("ESPN has no match for this player, so past weeks show projections only.", fontSize = 11.sp, color = muted)
     }
 }
 
+private const val SEASON_ESPN_PROJECTION =
+    "ESPN's, scored with your league's settings. Yahoo projects only players on a roster in your league that week."
+
 @Composable
-private fun SeasonLine(week: String, opponent: String, projected: String, points: String, header: Boolean = false, live: Boolean = false, dim: Boolean = false) {
+private fun SeasonLine(
+    week: String,
+    opponent: String,
+    projected: String,
+    points: String,
+    header: Boolean = false,
+    live: Boolean = false,
+    dim: Boolean = false,
+    espn: Boolean = false,
+    pointsColor: Color? = null,
+) {
     val color = if (header || dim) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
     val size = if (header) 11.sp else 13.sp
     val bg = if (live) LocalFfl.current.liveTint else Color.Transparent
     Row(Modifier.fillMaxWidth().background(bg).padding(vertical = 3.dp, horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(week, Modifier.width(32.dp), fontSize = size, color = color)
         Text(opponent, Modifier.weight(1f), fontSize = size, color = color)
-        Text(projected, Modifier.width(64.dp), fontSize = size, color = color, textAlign = TextAlign.End)
-        Text(points, Modifier.width(64.dp), fontSize = size, color = color, textAlign = TextAlign.End, fontWeight = if (header) FontWeight.Normal else FontWeight.Bold)
+        Text(
+            projected,
+            Modifier.width(64.dp),
+            fontSize = size,
+            color = color,
+            textAlign = TextAlign.End,
+            fontStyle = if (espn) FontStyle.Italic else FontStyle.Normal,
+        )
+        Text(points, Modifier.width(64.dp), fontSize = size, color = pointsColor ?: color, textAlign = TextAlign.End, fontWeight = if (header) FontWeight.Normal else FontWeight.Bold)
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 }
