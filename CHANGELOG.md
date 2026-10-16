@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.5.1...v0.6.0) (2026-10-16)
+
+
+### Features
+
+* open a player's season from the lineup, week by week ([#22](https://github.com/johnbr/ffl-yahoo-android/issues/22)) ([3356015](https://github.com/johnbr/ffl-yahoo-android/commit/3356015db0ae3517b3b9001d6f9d1ec561d5e3be))
+
 ## [0.5.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.5.0...v0.5.1) (2026-10-15)
 
 
