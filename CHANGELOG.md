@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.2](https://github.com/johnbr/ffl-yahoo-android/compare/v0.6.1...v0.6.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* hold back an end of period the game clock has not reached ([#26](https://github.com/johnbr/ffl-yahoo-android/issues/26)) ([b1fcb61](https://github.com/johnbr/ffl-yahoo-android/commit/b1fcb61d4428497f269eb5c5893ec12e926ed076))
+
 ## [0.6.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.6.0...v0.6.1) (2026-10-16)
 
 
