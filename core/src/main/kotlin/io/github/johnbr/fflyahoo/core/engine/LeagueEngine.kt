@@ -17,6 +17,7 @@ import io.github.johnbr.fflyahoo.core.plays.LeagueSnapshot
 import io.github.johnbr.fflyahoo.core.plays.PlayFeed
 import io.github.johnbr.fflyahoo.core.plays.Plays
 import io.github.johnbr.fflyahoo.core.plays.ScoringEvent
+import io.github.johnbr.fflyahoo.core.relay.GameState
 import io.github.johnbr.fflyahoo.core.relay.Relay
 import io.github.johnbr.fflyahoo.core.relay.RelayPlay
 import io.github.johnbr.fflyahoo.core.seed.Seed
@@ -230,7 +231,7 @@ class LeagueEngine(
             var changed = false
             if (only == null) pending.forgetOthers(live.toSet())
             val results = coroutineScope {
-                live.map { playsId -> async { attempt { gamePlays(playsId, 1, now) } } }.awaitAll()
+                live.map { playsId -> async { attempt { gamePlays(playsId, 1, now, games.getValue(playsId)) } } }.awaitAll()
             }
             val lastPlays = if (only == null) LinkedHashMap() else LinkedHashMap(nflLastPlays)
             for ((playsId, result) in live.zip(results)) {
@@ -249,7 +250,8 @@ class LeagueEngine(
                 pending.observe(playsId, game, newest, now)
                 // The play after a scoring play is what takes its banner down.
                 nflPlays[playsId]?.let { cached ->
-                    if (banners.plays(game.gameId, cached.plays.map { it.sequence to it.playType }, now)) changed = true
+                    val rows = cached.plays.filter { it.sequence !in cached.held }.map { it.sequence to it.playType }
+                    if (banners.plays(game.gameId, rows, now)) changed = true
                 }
             }
             nflLastPlays = lastPlays
@@ -356,10 +358,13 @@ class LeagueEngine(
     }
 
     /**
-     * Recent plays for ONE NFL game, newest first. Re-rendered only when the body or the dictionary
-     * changed. Returns the cached rows, or `[]`, rather than raising.
+     * Recent plays for ONE NFL game, newest first. Re-rendered only when the body, the dictionary or the
+     * period ends held back changed. Returns the cached rows, or `[]`, rather than raising.
+     *
+     * A period end the game's clock has not reached is left out (see [Pending.periodEndNotReached]);
+     * [game] is this poll's row for the game, or `null` to take it from the last refresh.
      */
-    private suspend fun gamePlays(playsId: String, limit: Int, now: Double): List<NflPlayRow> {
+    private suspend fun gamePlays(playsId: String, limit: Int, now: Double, game: GameState? = null): List<NflPlayRow> {
         if (playsId.isEmpty()) return emptyList()
         val cached = nflPlays[playsId]
         val fetched = attempt {
@@ -374,13 +379,15 @@ class LeagueEngine(
         }.getOrElse { return cached?.rows?.take(limit) ?: emptyList() }
         val (body, parsed, names) = fetched
         val (plays, needed) = parsed
-        if (cached != null && cached.body == body && cached.names === names) return cached.rows.take(limit)
+        val current = game ?: data?.nflGames?.firstOrNull { it.playsId == playsId }
+        val held = plays.filter { current != null && Pending.periodEndNotReached(it, current) }.map { it.sequence }.toSet()
+        if (cached != null && cached.body == body && cached.names === names && cached.held == held) return cached.rows.take(limit)
 
         // Shortened against THIS game's ids, so two players who abbreviate alike keep their full names.
         val shortNames = Plays.abbreviateNames(names, needed)
         val rows = plays.asReversed().mapNotNull { play ->
             val text = Relay.humanizePlay(play.text, names)
-            if (text.isEmpty()) {
+            if (text.isEmpty() || play.sequence in held) {
                 null
             } else {
                 NflPlayRow(
@@ -393,7 +400,7 @@ class LeagueEngine(
                 )
             }
         }
-        nflPlays[playsId] = GamePlays(body, plays, needed, names, rows)
+        nflPlays[playsId] = GamePlays(body, plays, needed, names, held, rows)
         return rows.take(limit)
     }
 
@@ -441,6 +448,8 @@ class LeagueEngine(
         val needed: Set<String>,
         /** The dictionary object the rows were rendered with, compared by identity. */
         val names: Map<String, String>,
+        /** Sequences left out as period ends the game's clock had not reached. */
+        val held: Set<Int>,
         val rows: List<NflPlayRow>,
     )
 

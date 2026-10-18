@@ -4,9 +4,12 @@ import io.github.johnbr.fflyahoo.core.BUF
 import io.github.johnbr.fflyahoo.core.DET
 import io.github.johnbr.fflyahoo.core.gameRow
 import io.github.johnbr.fflyahoo.core.relay.GameState
+import io.github.johnbr.fflyahoo.core.relay.Relay
 import io.github.johnbr.fflyahoo.core.state.NflPlayRow
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 /** Port of `tests/test_pending_plays.py`. */
@@ -285,5 +288,45 @@ class PendingPlaysTest {
         pending.observe("2", gameRow(team = DET, down = 2, distance = 4, toGoal = 62, home = 3), null, 260.0)
         pending.observe("2", gameRow(team = BUF, toGoal = 40, home = 3), null, 300.0)
         assertEquals("Turnover, Buf ball", pending.text("2"))
+    }
+
+    // -- periodEndNotReached -------------------------------------------------------------------------
+
+    // Captured live 2026-10-18, Ari at LAR: the feed wrote "End of Half" straight after a field goal at
+    // Q2 14:55, while the games feed stood at Q2 14:51.
+    private val earlyHalf = Relay.parsePlays(
+        "p|14|41|4|12|12|22|2|14:55|9|0|[40159] made a 30-yard field goal\n" +
+            "p|14|42|1|10|65|22|2|0:00|25|0|End of Half\n",
+    )
+    private val at1451 = GameState(
+        "g|20261018014|22|14|P|26|2|14:51|6|3|1792353900|1|10|65|22|2|3|0|0|1012|0|0|0|1|3|0|1".split("|"),
+    )
+
+    @Test
+    fun `an end of half written mid quarter is held back`() {
+        val (fieldGoal, endOfHalf) = earlyHalf
+        assertTrue(Pending.periodEndNotReached(endOfHalf, at1451))
+        assertFalse(Pending.periodEndNotReached(fieldGoal, at1451), "an ordinary play is never held back")
+    }
+
+    @Test
+    fun `the end of half shows once the clock runs out`() {
+        val endOfHalf = earlyHalf[1]
+        assertFalse(Pending.periodEndNotReached(endOfHalf, gameRow(period = "2", clock = "0:00")))
+        assertFalse(Pending.periodEndNotReached(endOfHalf, gameRow(period = "3", clock = "15:00")))
+    }
+
+    @Test
+    fun `a period end a poll ahead of the games feed waits for it`() {
+        val endOfFirst = Relay.parsePlays("p|9|44|4|4|63|9|1|0:00|25|0|End of 1st Quarter\n").single()
+        assertTrue(Pending.periodEndNotReached(endOfFirst, gameRow(period = "1", clock = "0:17")))
+        assertFalse(Pending.periodEndNotReached(endOfFirst, gameRow(period = "2", clock = "15:00")))
+    }
+
+    @Test
+    fun `a clock that cannot be read holds nothing back`() {
+        val endOfHalf = earlyHalf[1]
+        assertFalse(Pending.periodEndNotReached(endOfHalf, gameRow(period = "", clock = "")))
+        assertFalse(Pending.periodEndNotReached(endOfHalf, gameRow(period = "2", clock = "Halftime")))
     }
 }
