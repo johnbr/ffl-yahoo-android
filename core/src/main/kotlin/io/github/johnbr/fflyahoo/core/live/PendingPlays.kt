@@ -21,6 +21,7 @@ object Pending {
 
     /** Play-feed rows that never move the ball: `24` timeout / two-minute warning, `25` end of a period. */
     val NO_BALL_TYPES = setOf("24", "25")
+    const val PERIOD_END = "25"
 
     /** How long the play feed is re-checked for a pending play's text. */
     const val CHASE_FOR_SECONDS = 60.0
@@ -44,6 +45,22 @@ object Pending {
         val m = Py.intOrNull(parts[0]) ?: return null
         val s = Py.intOrNull(parts[1]) ?: return null
         return GameTime(p, 15 * 60 - (m * 60 + s))
+    }
+
+    /**
+     * Whether a play-feed row ends a period the game's clock has not run out. Yahoo has written one early:
+     * on 2026-10-18 (Ari at LAR) the feed carried "End of Half", stamped Q2 0:00, straight after a field goal
+     * at 14:55 while the games feed stood at Q2 14:51 waiting on the kickoff — and it went on the screen as
+     * the game's last play, until Yahoo rewrote that same row in place as the kickoff — a placeholder, not a
+     * period end at all. The games feed is the authority, so such a row waits until the clock reaches it;
+     * a real one a poll ahead of the games feed waits that one poll. Only the end of a period is held back:
+     * its clock is the claim itself, where an ordinary snap legitimately runs ahead of the games feed.
+     */
+    fun periodEndNotReached(play: RelayPlay, game: GameState): Boolean {
+        if (play.playType != PERIOD_END) return false
+        val ends = gameTime(play.period, play.clock) ?: return false
+        val stands = gameTime(game.period, game.clock) ?: return false
+        return stands < ends
     }
 
     /** The situation a play-feed row ran from. */
