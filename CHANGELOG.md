@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.6.2...v0.7.0) (2026-10-23)
+
+
+### Features
+
+* refresh the moment the games feed moves, not at the next poll ([#32](https://github.com/johnbr/ffl-yahoo-android/issues/32)) ([3646df5](https://github.com/johnbr/ffl-yahoo-android/commit/3646df564a81b8bcb2a1298d4e2593fcd230514a))
+
 ## [0.6.2](https://github.com/johnbr/ffl-yahoo-android/compare/v0.6.1...v0.6.2) (2026-10-18)
 
 
