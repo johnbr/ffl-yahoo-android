@@ -124,6 +124,7 @@ class LeagueEngine(
     /** The poll and the chase between polls both write the last-play lines; one at a time. */
     private val nflLock = Mutex()
     private var chase: Job? = null
+    private var seedRefresh: Job? = null
 
     private val _state = MutableStateFlow(snapshotUi())
     val state: StateFlow<LeagueUi> = _state.asStateFlow()
@@ -141,11 +142,29 @@ class LeagueEngine(
         publish()
     }
 
-    /** Poll forever on the adaptive cadence; [refreshNow] cuts the wait short. */
+    /** Poll forever on the adaptive cadence; [refreshNow], or the games feed moving, cuts the wait short. */
     suspend fun run() {
         while (true) {
-            val next = refreshSafely()
-            withTimeoutOrNull(next * 1000L) { wake.receive() }
+            awaitNext(refreshSafely())
+        }
+    }
+
+    /**
+     * Wait out [seconds] until the next poll. While a game is on, ask every [WATCH_SECONDS] whether the
+     * games feed has moved since the last poll read it, and stop waiting the moment it has: the feed moves
+     * on every snap, and a 10 s poll left a change waiting ~5 s on average. Each ask is one conditional
+     * request, answered `304` with no body while nothing has moved. Port of `coordinator._async_watch`.
+     */
+    private suspend fun awaitNext(seconds: Int) {
+        withTimeoutOrNull(seconds * 1000L) {
+            if (seconds != LeagueState.SCAN_INTERVAL_LIVE_SECONDS) {
+                wake.receive()
+                return@withTimeoutOrNull
+            }
+            while (true) {
+                if (withTimeoutOrNull((WATCH_SECONDS * 1000).toLong()) { wake.receive() } != null) return@withTimeoutOrNull
+                if (attempt { source.gamesMoved(clock()) }.getOrDefault(false)) return@withTimeoutOrNull
+            }
         }
     }
 
@@ -186,6 +205,7 @@ class LeagueEngine(
         data = fresh
         lastError = null
         startChase(now)
+        startSeedRefresh(now)
         val next = LeagueState.pollInterval(fresh, interval)
         interval = next
         publish()
@@ -266,6 +286,12 @@ class LeagueEngine(
         val play = cached.plays.lastOrNull { it.sequence == sequence }
             ?: return Landed(sequence, Situation("", 0, 0, 0))
         return Landed(sequence, Pending.situationOf(play), play.period, play.clock, play.playType)
+    }
+
+    /** Refetch an aged-out league seed off the poll's path; the next poll finds it. */
+    private fun startSeedRefresh(now: Double) {
+        if (seedRefresh?.isActive == true || !source.seed.due(now)) return
+        seedRefresh = scope.launch(dispatcher) { source.seed.refresh(now) }
     }
 
     /** Re-read the play feeds of games awaiting text, every few seconds, until the next poll. */
@@ -465,6 +491,12 @@ class LeagueEngine(
 
         /** How often a game's play feed is re-read between polls while a snap's text is awaited. */
         const val CHASE_SECONDS = 3.0
+
+        /**
+         * How often, between live polls, the games feed is asked whether it has moved. It moved every ~11 s
+         * with one game on (sampled 2026-10-22), every ~7 s with eight.
+         */
+        const val WATCH_SECONDS = 2.0
 
         /** How late a poll may be (past its interval) before it is treated as coming after a gap. */
         const val GAP_GRACE_SECONDS = 30

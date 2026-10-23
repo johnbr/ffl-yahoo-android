@@ -351,7 +351,10 @@ private class NflPanels(private val openKey: MutableState<String?>) {
 private fun rememberNflPanels(ui: LeagueUi, engine: LeagueEngine?): NflPanels {
     val openKey = rememberSaveable(ui.leagueId) { mutableStateOf<String?>(null) }
     val panels = remember(ui.leagueId) { NflPanels(openKey) }
-    LaunchedEffect(panels.open, ui.updatedAt, ui.nfl.liveTick) {
+    // The game's last-play line is a key too: play text the chase picks up between polls changes it
+    // without touching the poll time or the clock, and the open list should follow it at once.
+    val openLine = ui.nfl.games.firstOrNull { it.playsId == panels.open }?.let { it.lastPlay to it.lastPlayProvisional }
+    LaunchedEffect(panels.open, ui.updatedAt, ui.nfl.liveTick, openLine) {
         val playsId = panels.open ?: return@LaunchedEffect
         if (playsId.startsWith("id:") || engine == null) return@LaunchedEffect
         panels.plays[playsId] = engine.nflPlays(playsId, 12)
