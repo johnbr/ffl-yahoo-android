@@ -10,6 +10,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -174,7 +175,8 @@ class ClientTest {
         val src = source(fetch)
         val good = src.refresh(100.0)
         fetch.fail = setOf("redzone")
-        val served = src.refreshOrStale(100.0 + SEED_TTL_SECONDS + 1)
+        // Past the seed TTL and its grace, so the failing seed fetch is attempted in line.
+        val served = src.refreshOrStale(100.0 + SEED_TTL_SECONDS + SEED_GRACE_SECONDS + 1)
         assertSame(good, served)
         assertEquals(100.0, served.fetchedAt)
     }
@@ -190,8 +192,37 @@ class ClientTest {
         assertEquals(0, fetch.log.count { "redzone" in it })
         assertEquals(2, fetch.log.size)
         fetch.log.clear()
-        src.refresh(100.0 + SEED_TTL_SECONDS + 1)
+        src.refresh(100.0 + SEED_TTL_SECONDS + SEED_GRACE_SECONDS + 1)
         assertEquals(1, fetch.log.count { "redzone" in it })
+    }
+
+    @Test
+    fun `a seed just past its ttl serves while it is refetched aside`() = runBlocking {
+        val fetch = FakeFetch(bodies())
+        val src = source(fetch)
+        src.refresh(100.0)
+        assertFalse(src.seed.due(100.0 + SEED_TTL_SECONDS - 1))
+
+        fetch.log.clear()
+        val aged = 100.0 + SEED_TTL_SECONDS + 1
+        assertTrue(src.seed.due(aged))
+        src.refresh(aged)
+        assertEquals(0, fetch.log.count { "redzone" in it }, "the poll served the seed it had")
+
+        src.seed.refresh(aged)
+        assertEquals(1, fetch.log.count { "redzone" in it })
+        assertFalse(src.seed.due(aged + 1))
+    }
+
+    @Test
+    fun `a failed background seed refresh keeps the old seed`() = runBlocking {
+        val fetch = FakeFetch(bodies())
+        val seed = SeedClient(fetch, league)
+        val first = seed.payload(100.0)
+        fetch.fail = setOf("redzone")
+        seed.refresh(100.0 + SEED_TTL_SECONDS + 1)
+        assertSame(first, seed.payload(100.0 + SEED_TTL_SECONDS + 1))
+        assertTrue(seed.due(100.0 + SEED_TTL_SECONDS + 1), "still due, so the next poll tries again")
     }
 
     @Test
@@ -409,5 +440,110 @@ class ClientTest {
         assertEquals(1, fetch.log.count { it.endsWith("/stats.txt") })
         second.refresh(100.0 + LIVE_SHARE_SECONDS)
         assertEquals(2, fetch.log.count { it.endsWith("/stats.txt") })
+    }
+
+    // -- the games-feed watch: has anything moved since the last refresh? ----------------------------
+
+    /** The games feed, honouring `If-Modified-Since`; any other URL is not expected here. */
+    private class FakeGames(var body: String, var modified: String = "Fri, 23 Oct 2026 00:45:04 GMT") : ConditionalFetcher {
+        val asks = ArrayList<String?>()
+        var fail = false
+        override suspend fun fetch(url: String, since: String?): Pair<String?, String> {
+            assertTrue("games" in url, url)
+            asks += since
+            if (fail) throw IOException("boom")
+            if (since != null && since == modified) return null to since
+            return body to modified
+        }
+    }
+
+    @Test
+    fun `an unmoved games feed is a 304`() = runBlocking {
+        val games = FakeGames(bodies().getValue("games"))
+        val src = source(FakeFetch(bodies()), conditional = games)
+        src.refresh(100.0)
+        assertEquals(listOf<String?>(null), games.asks, "the refresh fetches the feed whole")
+        assertFalse(src.gamesMoved(103.0))
+        assertEquals(games.modified, games.asks.last(), "the check carries the refresh's Last-Modified")
+    }
+
+    @Test
+    fun `a moved games feed says so until a refresh reads it`() = runBlocking {
+        val games = FakeGames(bodies().getValue("games"))
+        val src = source(FakeFetch(bodies()), conditional = games)
+        src.refresh(100.0)
+        games.modified = "Fri, 23 Oct 2026 00:45:11 GMT"
+        assertTrue(src.gamesMoved(103.0))
+        assertTrue(src.gamesMoved(105.0), "a check alone does not mark it read")
+        src.refresh(107.0)
+        assertFalse(src.gamesMoved(110.0))
+    }
+
+    @Test
+    fun `nothing to compare is no change`() = runBlocking {
+        val games = FakeGames(bodies().getValue("games"))
+        assertFalse(source(FakeFetch(bodies()), conditional = games).gamesMoved(100.0))
+        assertTrue(games.asks.isEmpty(), "no request before a refresh has read the feed")
+
+        val plain = source(FakeFetch(bodies()))
+        plain.refresh(100.0)
+        assertFalse(plain.gamesMoved(103.0))
+    }
+
+    @Test
+    fun `a failed check is no change`() = runBlocking {
+        val games = FakeGames(bodies().getValue("games"))
+        val src = source(FakeFetch(bodies()), conditional = games)
+        src.refresh(100.0)
+        games.fail = true
+        assertFalse(src.gamesMoved(103.0))
+    }
+
+    @Test
+    fun `a dropped games fetch keeps what it was compared against`() = runBlocking {
+        val games = FakeGames(bodies().getValue("games"))
+        val src = source(FakeFetch(bodies()), conditional = games)
+        val first = src.refresh(100.0)
+        games.fail = true
+        val held = src.refresh(110.0)
+        assertEquals(first.nflGames.size, held.nflGames.size, "the slate is held")
+        games.fail = false
+        assertFalse(src.gamesMoved(113.0))
+    }
+
+    // -- not in the Python: leagues share the games-feed watch ---------------------------------------
+
+    @Test
+    fun `two leagues asking together share one check`() = runBlocking {
+        val fetch = FakeFetch(bodies())
+        val games = FakeGames(bodies().getValue("games"))
+        val relay = RelayClient(fetch, games)
+        val first = LeagueSource(SeedClient(fetch, league), relay)
+        val second = LeagueSource(SeedClient(fetch, league), relay)
+        first.refresh(100.0)
+        second.refresh(101.0)
+        games.asks.clear()
+        first.gamesMoved(103.0)
+        second.gamesMoved(103.5)
+        assertEquals(1, games.asks.size)
+        second.gamesMoved(103.0 + WATCH_SHARE_SECONDS)
+        assertEquals(2, games.asks.size)
+    }
+
+    @Test
+    fun `one league reading a change does not hide it from another`() = runBlocking {
+        val fetch = FakeFetch(bodies())
+        val games = FakeGames(bodies().getValue("games"))
+        val relay = RelayClient(fetch, games)
+        val first = LeagueSource(SeedClient(fetch, league), relay)
+        val second = LeagueSource(SeedClient(fetch, league), relay)
+        first.refresh(100.0)
+        second.refresh(101.0)
+
+        games.modified = "Fri, 23 Oct 2026 00:45:11 GMT"
+        assertTrue(first.gamesMoved(103.0))
+        first.refresh(104.0)
+        assertFalse(first.gamesMoved(106.0))
+        assertTrue(second.gamesMoved(106.5), "the second league has not read it yet")
     }
 }

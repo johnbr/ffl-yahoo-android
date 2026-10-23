@@ -394,9 +394,14 @@ def scenario_golden(fixtures: Path):
     server = _ScenarioServer()
     fired = []
 
+    # Which config entry and league fired an event, and the side of the configured team's matchup it
+    # was on, are routing for Home Assistant's automations (ha-ffl-yahoo#69). The engines are compared
+    # on the play itself.
+    ha_only = {"entry_id", "league_id", "side"}
+
     class _Bus:
         def async_fire(self, event_type, data):
-            fired.append(data)
+            fired.append({k: v for k, v in data.items() if k not in ha_only})
 
     class _Hass:
         bus = _Bus()
