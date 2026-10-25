@@ -107,11 +107,16 @@ fun MatchupRowView(
             Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 10.dp)) {
                 when (open) {
                     Panel.ROSTER -> {
+                        // The play line is the usual way in, but it is gone once no starter is playing.
+                        PanelLink("Scoring plays ›", Alignment.TopEnd) { onToggle(Panel.PLAYS) }
                         Projections(row)
                         WinBar(row)
                         if (detail == null) Loading("Loading rosters…") else Rosters(detail, onPlayer)
                     }
-                    Panel.PLAYS -> if (history == null) Loading("Loading plays…") else History(history)
+                    Panel.PLAYS -> {
+                        PanelLink("‹ Lineup", Alignment.TopStart) { onToggle(Panel.ROSTER) }
+                        if (history == null) Loading("Loading plays…") else History(history)
+                    }
                     Panel.PLAYER -> SeasonView(season, onBack)
                     null -> {}
                 }
@@ -186,6 +191,19 @@ private fun RowPlay(play: PlayRow, open: Boolean, align: TextAlign, onClick: () 
         fontWeight = FontWeight.Medium,
         color = color,
     )
+}
+
+/** A link between a matchup's two panels, the lineup and its scoring plays. */
+@Composable
+private fun PanelLink(text: String, align: Alignment, onClick: () -> Unit) {
+    Box(Modifier.fillMaxWidth(), contentAlignment = align) {
+        Text(
+            text,
+            Modifier.clickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 4.dp),
+            color = MaterialTheme.colorScheme.primary,
+            fontSize = 13.sp,
+        )
+    }
 }
 
 @Composable
