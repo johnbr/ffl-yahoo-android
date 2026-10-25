@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.8.1...v0.9.0) (2026-10-25)
+
+
+### Features
+
+* widget drops its background, so it sits on the wallpaper ([#40](https://github.com/johnbr/ffl-yahoo-android/issues/40)) ([72ef3c7](https://github.com/johnbr/ffl-yahoo-android/commit/72ef3c714a4367242a1dd1b82d316ef8669f6a63))
+
 ## [0.8.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.8.0...v0.8.1) (2026-10-25)
 
 
