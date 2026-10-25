@@ -63,12 +63,6 @@ const val PLAYS_MIN_INTERVAL_SECONDS = 2.0
  */
 const val LIVE_SHARE_SECONDS = 2.0
 
-/** The window in which every league's "has the games feed moved?" shares one conditional request. */
-const val WATCH_SHARE_SECONDS = 1.0
-
-/** One poll's live feeds, and the `Last-Modified` the games feed came with (`""` when unknown). */
-class LiveFeeds(val stats: String, val games: String, val gamesModified: String)
-
 /** Run [block], turning any non-cancellation failure into a [Result]. */
 internal suspend inline fun <T> attempt(crossinline block: suspend () -> T): Result<T> =
     try {
@@ -107,14 +101,7 @@ class RelayClient(
 
     private val live = HashMap<String, Pair<String, Double>>()
     private val liveLock = Mutex()
-    private var shared: Pair<Double, Result<LiveFeeds>>? = null
-
-    /** `Last-Modified` of the games body [live] holds. */
-    private var heldGamesModified = ""
-
-    /** `Last-Modified` of the newest games feed seen, by a poll or by [gamesModified]; under [liveLock]. */
-    private var newestGamesModified = ""
-    private var watchedAt = Double.NEGATIVE_INFINITY
+    private var shared: Pair<Double, Result<Pair<String, String>>>? = null
 
     private val playersLock = Mutex()
     private var players: Map<String, String>? = null
@@ -142,51 +129,19 @@ class RelayClient(
         return last
     }
 
-    /** The games feed and its `Last-Modified`, or `"" to ""` when the fetch failed. */
-    private suspend fun gamesFeed(): Pair<String, String> {
-        val url = Relay.relayUrl("games", sport)
-        val conditional = fetchIfModified ?: return getOptional(url) to ""
-        val (body, modified) = attempt { conditional.fetch(url, null) }.getOrElse { return "" to "" }
-        if (body == null || body.length < MIN_BODY) return "" to ""
-        return body to modified
-    }
-
-    /** Stats and games for one poll, fetched concurrently and shared by polls inside [LIVE_SHARE_SECONDS]. */
-    suspend fun liveFeeds(now: Double): LiveFeeds = liveLock.withLock {
+    /** `(stats, games)` for one poll, fetched concurrently and shared by polls inside [LIVE_SHARE_SECONDS]. */
+    suspend fun liveFeeds(now: Double): Pair<String, String> = liveLock.withLock {
         shared?.let { (at, result) -> if (now - at in 0.0..<LIVE_SHARE_SECONDS) return@withLock result.getOrThrow() }
         val result = attempt {
             val (stats, games) = coroutineScope {
                 val stats = async { getOptional(Relay.relayUrl("stats", sport)) }
-                val games = async { gamesFeed() }
+                val games = async { getOptional(Relay.relayUrl("games", sport)) }
                 stats.await() to games.await()
             }
-            val (gamesBody, modified) = games
-            if (gamesBody.isNotEmpty()) {
-                heldGamesModified = modified
-                if (modified.isNotEmpty()) newestGamesModified = modified
-                watchedAt = now
-            }
-            LiveFeeds(liveFeed("stats", stats, now), liveFeed("games", gamesBody, now), heldGamesModified)
+            liveFeed("stats", stats, now) to liveFeed("games", games, now)
         }
         shared = now to result
         result.getOrThrow()
-    }
-
-    /**
-     * The games feed's `Last-Modified` as the relay has it now — one conditional request, answered `304`
-     * with no body while nothing has moved, and shared by every league asking inside
-     * [WATCH_SHARE_SECONDS]. Not in the Python, whose client serves one league: there each coordinator
-     * asks about its own last read (`RedzoneClient.async_games_changed`). `""` with nothing to ask about;
-     * a failed ask answers with what was known.
-     */
-    suspend fun gamesModified(now: Double): String = liveLock.withLock {
-        val conditional = fetchIfModified ?: return@withLock ""
-        if (newestGamesModified.isEmpty() || now - watchedAt in 0.0..<WATCH_SHARE_SECONDS) return@withLock newestGamesModified
-        watchedAt = now
-        val (body, modified) = attempt { conditional.fetch(Relay.relayUrl("games", sport), newestGamesModified) }
-            .getOrElse { return@withLock newestGamesModified }
-        if (body != null && modified.isNotEmpty()) newestGamesModified = modified
-        newestGamesModified
     }
 
     /**
@@ -289,27 +244,14 @@ class LeagueSource(val seed: SeedClient, val relay: RelayClient) {
     var lastGood: LeagueData? = null
         private set
 
-    /** `Last-Modified` of the games feed this league's last refresh read. */
-    private var seenGamesModified = ""
-
-    /**
-     * Whether the games feed has moved since this league's last refresh read it — the engine's cue to
-     * refresh before the next poll is due. `false` when either side is unknown.
-     */
-    suspend fun gamesMoved(now: Double): Boolean {
-        val current = relay.gamesModified(now)
-        return current.isNotEmpty() && seenGamesModified.isNotEmpty() && current != seenGamesModified
-    }
-
     suspend fun refresh(now: Double): LeagueData {
         val (payload, feeds) = coroutineScope {
             val payload = async { seed.payload(now) }
             val feeds = async { relay.liveFeeds(now) }
             payload.await() to feeds.await()
         }
-        seenGamesModified = feeds.gamesModified
         val data = try {
-            Seed.leagueFromPayloads(payload, feeds.stats, feeds.games, leagueId, now)
+            Seed.leagueFromPayloads(payload, feeds.first, feeds.second, leagueId, now)
         } catch (e: CancellationException) {
             throw e
         } catch (e: RuntimeException) {

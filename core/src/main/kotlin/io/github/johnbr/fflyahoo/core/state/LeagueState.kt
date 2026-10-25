@@ -18,6 +18,11 @@ import kotlin.math.sqrt
  * the shapes are pinned by tests rather than discovered when a screen renders wrong.
  */
 object LeagueState {
+    /**
+     * The live poll. Asking the relay between polls is not free: a 2 s games-feed watch (v0.7.0) was
+     * withdrawn after the relay started refusing the network it ran from (HTTP 999, "Request denied") on
+     * its first full Sunday, 2026-10-25. A `304` is still a request.
+     */
     const val SCAN_INTERVAL_LIVE_SECONDS = 10
     const val SCAN_INTERVAL_NEAR_GAME_SECONDS = 300
     const val SCAN_INTERVAL_IDLE_SECONDS = 1800
