@@ -45,8 +45,10 @@ import io.github.johnbr.fflyahoo.app
 import io.github.johnbr.fflyahoo.ui.MainActivity
 
 /**
- * Your matchup on the home screen. Every size shows both scores; one wide enough adds the live
- * projections, one row tall on a phone adds the last play, and a larger one the league and live count.
+ * Your matchup on the home screen, drawn as the integration's my-score card is. Every size shows both
+ * scores; one wide enough adds the live projections and, after each score, how many of that team's
+ * starters still have a game to finish. One row tall on a phone adds the last play for three minutes
+ * after it scores, and a larger one gives the play two lines.
  */
 class MatchupWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(SMALL, WIDE, ROW, MEDIUM))
@@ -77,13 +79,15 @@ class MatchupWidget : GlanceAppWidget() {
         val tall = size.height >= MEDIUM.height
         // A finished matchup's projections are just its scores again.
         val projections = size.width >= WIDE.width && !(s?.final ?: false)
+        // Like the projections: once it's over they are zero on both sides, and the result is the news.
+        val counts = projections && (s?.myRemaining != null || s?.opponentRemaining != null)
         val lastPlay = size.height >= ROW.height
         Column(
             GlanceModifier
                 .fillMaxSize()
                 .background(GlanceTheme.colors.widgetBackground)
                 .cornerRadius(16.dp)
-                .padding(horizontal = 12.dp, vertical = if (tall) 12.dp else 8.dp)
+                .padding(horizontal = 12.dp, vertical = if (tall) 8.dp else 4.dp)
                 .clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -91,31 +95,41 @@ class MatchupWidget : GlanceAppWidget() {
                 Text(empty, style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp))
                 return@Column
             }
-            if (tall) {
-                Text(
-                    s.leagueName + (s.activeGames.takeIf { it > 0 }?.let { " · $it live" } ?: ""),
-                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 11.sp),
-                    maxLines = 1,
-                )
-                Spacer(GlanceModifier.height(4.dp))
-            }
-            val columns = Columns.measure(LocalContext.current, listOf(s.myPoints, s.opponentPoints), listOf(s.myProjected, s.opponentProjected))
-            TeamLine(s.myName, s.myPoints, s.myProjected, s.myTrend, s.leader == "me", s.leader == "opponent", s.final, projections, columns)
-            TeamLine(s.opponentName, s.opponentPoints, s.opponentProjected, s.opponentTrend, s.leader == "opponent", s.leader == "me", s.final, projections, columns)
+            val columns = Columns.measure(
+                LocalContext.current,
+                listOf(s.myPoints, s.opponentPoints),
+                listOf(s.myProjected, s.opponentProjected),
+                listOf(count(s.myRemaining), count(s.opponentRemaining)),
+            )
+            TeamLine(s.myName, s.myPoints, s.myProjected, s.myTrend, s.myRemaining, s.leader == "me", s.leader == "opponent", s.final, projections, counts, columns)
+            TeamLine(s.opponentName, s.opponentPoints, s.opponentProjected, s.opponentTrend, s.opponentRemaining, s.leader == "opponent", s.leader == "me", s.final, projections, counts, columns)
             if (lastPlay && s.lastPlay.isNotEmpty()) {
-                Spacer(GlanceModifier.height(if (tall) 4.dp else 2.dp))
+                Spacer(GlanceModifier.height(2.dp))
                 Text(s.lastPlay, style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp), maxLines = if (tall) 2 else 1)
             }
         }
     }
 
     /**
-     * One team: the name, then its projection and its points. Each figure is split at its decimal point
-     * into a right-aligned whole part and a left-aligned fraction, in columns as wide as the wider of the
-     * two teams' parts, so the decimal points line up whatever the font's digit widths.
+     * One team: the name, then its projection, its points and its starters left to play. Each figure is
+     * split at its decimal point into a right-aligned whole part and a left-aligned fraction, in columns as
+     * wide as the wider of the two teams' parts, so the decimal points line up whatever the font's digit
+     * widths. The count has a column of its own after the points, blank for a side the tier can't count.
      */
     @Composable
-    private fun TeamLine(name: String, points: String, projected: String, trend: String, ahead: Boolean, behind: Boolean, final: Boolean, projections: Boolean, columns: Columns) {
+    private fun TeamLine(
+        name: String,
+        points: String,
+        projected: String,
+        trend: String,
+        remaining: Int?,
+        ahead: Boolean,
+        behind: Boolean,
+        final: Boolean,
+        projections: Boolean,
+        counts: Boolean,
+        columns: Columns,
+    ) {
         // Gold for the winner once the matchup is over — never mid-game, as in the app.
         val won = ahead && final
         Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -138,6 +152,14 @@ class MatchupWidget : GlanceAppWidget() {
                 else -> GlanceTheme.colors.onSurface
             }
             Figure(points, columns.points, pointsColor, POINTS_SIZE, FontWeight.Bold)
+            if (counts) {
+                Text(
+                    count(remaining),
+                    GlanceModifier.width(columns.count).padding(start = COUNT_GAP),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = COUNT_SIZE),
+                    maxLines = 1,
+                )
+            }
         }
     }
 
@@ -171,10 +193,10 @@ class MatchupWidget : GlanceAppWidget() {
     /** The widths of one figure's two cells. */
     private class Cells(val whole: Dp, val fraction: Dp)
 
-    /** Both figures' columns, measured in the widget's own font at the user's font scale. */
-    private class Columns(val points: Cells, val projected: Cells) {
+    /** Both figures' columns and the count's, measured in the widget's own font at the user's font scale. */
+    private class Columns(val points: Cells, val projected: Cells, val count: Dp) {
         companion object {
-            fun measure(context: Context, points: List<String>, projected: List<String>): Columns {
+            fun measure(context: Context, points: List<String>, projected: List<String>, counts: List<String>): Columns {
                 val metrics = context.resources.displayMetrics
                 fun column(texts: List<String>, size: TextUnit, bold: Boolean): Cells {
                     val style = if (bold) Typeface.BOLD else Typeface.NORMAL
@@ -192,7 +214,9 @@ class MatchupWidget : GlanceAppWidget() {
                     // A little slack on each cell for rounding; the gap goes before the whole part.
                     return Cells(widest(split.map { it.first }) + GAP + 2.dp, widest(split.map { it.second }) + 2.dp)
                 }
-                return Columns(column(points, POINTS_SIZE, bold = true), column(projected, PROJECTED_SIZE, bold = false))
+                // The count is one cell: the gap before it, then the wider of the two, as the figures are.
+                val count = column(counts, COUNT_SIZE, bold = false).whole - GAP + COUNT_GAP
+                return Columns(column(points, POINTS_SIZE, bold = true), column(projected, PROJECTED_SIZE, bold = false), count)
             }
 
             /**
@@ -226,7 +250,7 @@ class MatchupWidget : GlanceAppWidget() {
         /** One row on a phone (about 99dp): room for the last play under the scores. */
         val ROW = DpSize(200.dp, 88.dp)
 
-        /** Two rows: the league line on top, and two lines for the last play. */
+        /** Two rows: room for two lines of the last play. */
         val MEDIUM = DpSize(220.dp, 110.dp)
 
         // The app's own trend colours (ui/Theme.kt), light and dark.
@@ -239,8 +263,13 @@ class MatchupWidget : GlanceAppWidget() {
         private val WINNER_NAME_SIZE = 15.sp
         private val PROJECTED_SIZE = 12.sp
         private val POINTS_SIZE = 16.sp
+        private val COUNT_SIZE = 12.sp
+        private val COUNT_GAP = 4.dp
     }
 }
+
+/** `(3)`, or nothing for a side the tier can't count. */
+private fun count(remaining: Int?): String = remaining?.let { "($it)" } ?: ""
 
 /** `126.26` -> `126` and `.26`; a figure with no decimal point (the `—` placeholder) is all whole part. */
 private fun split(text: String): Pair<String, String> {

@@ -6,7 +6,9 @@ import androidx.glance.appwidget.updateAll
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
@@ -33,18 +35,22 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.concurrent.TimeUnit
 
+private fun nowSeconds() = System.currentTimeMillis() / 1000.0
+
+/** Reads a snapshot saved by an older version, which carried fields this one has dropped. */
+private val snapshotJson = Json { ignoreUnknownKeys = true }
+
 /** What the widget draws — written whenever the selected league's matchup changes. */
 @Serializable
 data class WidgetSnapshot(
-    val leagueName: String,
     val myName: String,
     val myPoints: String,
     val myProjected: String,
     val opponentName: String,
     val opponentPoints: String,
     val opponentProjected: String,
+    /** The matchup's last play, or `""` once its [Present.PLAY_LINE_SECONDS] are up. */
     val lastPlay: String,
-    val activeGames: Int,
     /** `me` / `opponent` — who is ahead; empty on a tie or before a score. */
     val leader: String = "",
     /** Each live projection against the morning's: `UP` / `DOWN` / `FLAT`, empty when there is none. */
@@ -52,31 +58,39 @@ data class WidgetSnapshot(
     val opponentTrend: String = "",
     /** No starter on either side has a game left: the leader has won. */
     val final: Boolean = false,
+    /** Starters with a game still to finish, in progress or yet to kick off; null when the tier can't count. */
+    val myRemaining: Int? = null,
+    val opponentRemaining: Int? = null,
+    /** When [lastPlay] was scored, epoch seconds; 0 when unknown. */
+    val lastPlayAt: Double = 0.0,
 ) {
+    /** This snapshot, without its play line if that has had its [Present.PLAY_LINE_SECONDS] by [now]. */
+    fun expired(now: Double): WidgetSnapshot =
+        if (lastPlay.isNotEmpty() && Present.playLineLeft(lastPlayAt, now) == 0.0) copy(lastPlay = "") else this
+
     companion object {
         private fun file(context: Context) = File(context.filesDir, "widget.json")
 
         fun read(context: Context): WidgetSnapshot? =
-            runCatching { Json.decodeFromString(serializer(), file(context).readText()) }.getOrNull()
+            runCatching { snapshotJson.decodeFromString(serializer(), file(context).readText()) }.getOrNull()
 
         fun write(context: Context, snapshot: WidgetSnapshot?) {
             val f = file(context)
             if (snapshot == null) f.delete() else f.writeText(Json.encodeToString(serializer(), snapshot))
         }
 
-        fun of(ui: LeagueUi): WidgetSnapshot? {
+        fun of(ui: LeagueUi, now: Double = nowSeconds()): WidgetSnapshot? {
             val mine = ui.myTeam ?: return null
             val row = ui.scoreboard.matchups.firstOrNull { it.matchupId == mine.matchupId }
+            val play = row?.lastPlay
             return WidgetSnapshot(
-                leagueName = ui.scoreboard.leagueName,
                 myName = mine.me.name,
                 myPoints = Present.points(mine.me.points),
                 myProjected = Present.points(mine.me.liveProjected),
                 opponentName = mine.opponent.name,
                 opponentPoints = Present.points(mine.opponent.points),
                 opponentProjected = Present.points(mine.opponent.liveProjected),
-                lastPlay = row?.lastPlay?.shortText ?: "",
-                activeGames = ui.scoreboard.activeGames,
+                lastPlay = play?.takeIf { Present.playLineLeft(it.timestamp, now) > 0.0 }?.shortText ?: "",
                 myTrend = Present.trend(mine.me.liveProjected, mine.me.projected)?.name ?: "",
                 opponentTrend = Present.trend(mine.opponent.liveProjected, mine.opponent.projected)?.name ?: "",
                 final = row?.final ?: false,
@@ -85,6 +99,9 @@ data class WidgetSnapshot(
                     mine.me.teamId -> "me"
                     else -> "opponent"
                 },
+                myRemaining = mine.me.remaining,
+                opponentRemaining = mine.opponent.remaining,
+                lastPlayAt = play?.timestamp ?: 0.0,
             )
         }
     }
@@ -108,6 +125,24 @@ class WidgetUpdater(
     suspend fun publish(value: WidgetSnapshot?) = withContext(Dispatchers.IO) {
         WidgetSnapshot.write(context, value)
         snapshot.value = value
+        scheduleExpiry(value)
+    }
+
+    /**
+     * Takes the play line down when its time is up. A widget draws only when told to, and the score may
+     * not move again for an hour, so the expiry gets its own one-off job — work rather than a coroutine,
+     * so it still runs when the process has gone. Each publish replaces the last one's job.
+     */
+    private fun scheduleExpiry(value: WidgetSnapshot?) {
+        val left = value?.takeIf { it.lastPlay.isNotEmpty() }?.let { Present.playLineLeft(it.lastPlayAt, nowSeconds()) } ?: return
+        if (!left.isFinite()) return
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "widget-play-expiry",
+            ExistingWorkPolicy.REPLACE,
+            OneTimeWorkRequestBuilder<PlayExpiryWorker>()
+                .setInitialDelay((left * 1000).toLong() + 500, TimeUnit.MILLISECONDS)
+                .build(),
+        )
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -142,6 +177,20 @@ class WidgetUpdater(
 
     suspend fun hasWidgets(): Boolean =
         GlanceAppWidgetManager(context).getGlanceIds(MatchupWidget::class.java).isNotEmpty()
+}
+
+/** When the widget's play line has had its [Present.PLAY_LINE_SECONDS]: redraw it without the play. */
+class PlayExpiryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result {
+        val widgets = applicationContext.app.widgets
+        val current = widgets.snapshot.value ?: return Result.success()
+        val expired = current.expired(nowSeconds())
+        if (expired != current) {
+            widgets.publish(expired)
+            if (widgets.hasWidgets()) MatchupWidget().updateAll(applicationContext)
+        }
+        return Result.success()
+    }
 }
 
 /** Every 30 minutes: one refresh of the selected league, when nothing else is polling it. */

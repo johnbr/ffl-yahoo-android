@@ -107,6 +107,20 @@ object Present {
         }
     }
 
+    /**
+     * How long a glance view shows a scoring play, in seconds: the integration's my-score card's
+     * `MY_SCORE_PLAY_SECONDS`. A play is news for a few minutes, then just room taken.
+     */
+    const val PLAY_LINE_SECONDS = 180.0
+
+    /**
+     * Seconds left at [now] for the play line of a play scored at [at], both epoch seconds. Timed from
+     * the play's own timestamp, so a view redrawn on an old play doesn't show it for another three
+     * minutes. A play with no time on it never expires. The card's `playLineLeftMs`, in seconds.
+     */
+    fun playLineLeft(at: Double, now: Double): Double =
+        if (at <= 0.0) Double.POSITIVE_INFINITY else (at + PLAY_LINE_SECONDS - now).coerceAtLeast(0.0)
+
     /** A game's scoring banner, if one is still up at [now] (epoch seconds). */
     fun banner(game: NflGameRow, now: Double): ScoreBanner? = game.scoreBanner?.takeIf { it.kind.isNotEmpty() && it.until > now }
 

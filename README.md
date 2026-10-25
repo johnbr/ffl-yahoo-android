@@ -32,9 +32,13 @@ leagues work too.
   - It starts itself shortly before kickoff and stops when the games are over.
   - It sends alerts for *my player scored*, *opponent scored* and *lead changed*.
   - A notification is updated in place when the play's text lands.
-- **Home-screen widget.** Your matchup: both scores and live projections (green above the morning's
-  projection, red below), with the decimal points lined up, and the last play. Once the matchup is over the
-  projections drop away and the winner turns gold. Two rows tall, it adds the league and the number of live games.
+- **Home-screen widget.** Your matchup, drawn like the integration's my-score card.
+  - Both scores and live projections (green above the morning's projection, red below), with the
+    decimal points lined up.
+  - After each score, how many of that team's starters still have a game to finish, in progress or
+    yet to kick off: `111.74 (3)`.
+  - The last play, for three minutes after it scores. Two rows tall, the play gets two lines.
+  - Once the matchup is over, the projections and counts drop away and the winner turns gold.
 - **Several leagues.** Switch from the title bar.
 
 ## How it gets the data
