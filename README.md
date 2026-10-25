@@ -46,8 +46,7 @@ runs on:
   matchups, projections and your league's own scoring settings. It is cached for 3 minutes.
 - `relay-stream.sports.yahoo.com/nfl/{stats,games}.txt` is the live tier. It is polled every 10 s
   while a rostered player's game is on, every 5 minutes near games and every 30 minutes otherwise.
-  While a game is on, the games feed is also checked every 2 s with `If-Modified-Since`, and the
-  next poll runs as soon as it changes. Leagues share these fetches.
+  Leagues share these fetches.
 - `relay-stream.sports.yahoo.com/nfl/plays-<id>.txt` gives play-by-play for live games. It is fetched
   with `If-Modified-Since`, so an unchanged feed costs a `304`.
 
