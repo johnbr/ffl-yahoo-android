@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.7.0...v0.7.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* drop the 2 s games-feed watch, back to the 10 s live poll ([#34](https://github.com/johnbr/ffl-yahoo-android/issues/34)) ([3161776](https://github.com/johnbr/ffl-yahoo-android/commit/3161776aad4d2e2eacb5e3118624b2747b06b743))
+
 ## [0.7.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.6.2...v0.7.0) (2026-10-23)
 
 
