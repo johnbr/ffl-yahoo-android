@@ -105,7 +105,13 @@ class MatchupWidget : GlanceAppWidget() {
             TeamLine(s.opponentName, s.opponentPoints, s.opponentProjected, s.opponentTrend, s.opponentRemaining, s.leader == "opponent", s.leader == "me", s.final, projections, counts, columns)
             if (lastPlay && s.lastPlay.isNotEmpty()) {
                 Spacer(GlanceModifier.height(2.dp))
-                Text(s.lastPlay, style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp), maxLines = if (tall) 2 else 1)
+                // Centred under the two score lines, so it doesn't read as a third team.
+                Text(
+                    s.lastPlay,
+                    GlanceModifier.fillMaxWidth(),
+                    style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp, textAlign = TextAlign.Center),
+                    maxLines = if (tall) 2 else 1,
+                )
             }
         }
     }
