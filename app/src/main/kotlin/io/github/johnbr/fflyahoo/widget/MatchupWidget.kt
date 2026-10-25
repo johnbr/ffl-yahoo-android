@@ -23,9 +23,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.action.actionStartActivity
-import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
-import androidx.glance.background
 import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
@@ -84,9 +82,8 @@ class MatchupWidget : GlanceAppWidget() {
         val lastPlay = size.height >= ROW.height
         Column(
             GlanceModifier
+                // No background: the scores sit straight on the wallpaper.
                 .fillMaxSize()
-                .background(GlanceTheme.colors.widgetBackground)
-                .cornerRadius(16.dp)
                 .padding(horizontal = 12.dp, vertical = if (tall) 8.dp else 4.dp)
                 .clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,
