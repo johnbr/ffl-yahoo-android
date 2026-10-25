@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.7.1...v0.8.0) (2026-10-25)
+
+
+### Features
+
+* widget matches the my-score card: starters left, no league line, play for three minutes ([#36](https://github.com/johnbr/ffl-yahoo-android/issues/36)) ([0f20fc1](https://github.com/johnbr/ffl-yahoo-android/commit/0f20fc1ce94b10d2052246d750f9764fb3188ccf))
+
 ## [0.7.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.7.0...v0.7.1) (2026-10-25)
 
 
