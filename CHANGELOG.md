@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.8.0...v0.8.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* widget centres its play line under the scores ([#38](https://github.com/johnbr/ffl-yahoo-android/issues/38)) ([a933bd6](https://github.com/johnbr/ffl-yahoo-android/commit/a933bd66e8f9969e5d7f476771d94416f690c55e))
+
 ## [0.8.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.7.1...v0.8.0) (2026-10-25)
 
 
