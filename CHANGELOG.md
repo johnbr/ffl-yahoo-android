@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.13.0...v0.13.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* league widget fits its stack instead of cutting the last row in half ([#53](https://github.com/johnbr/ffl-yahoo-android/issues/53)) ([55dca9d](https://github.com/johnbr/ffl-yahoo-android/commit/55dca9d544e84903f0f92bfb5310bc9a3459bb2c))
+
 ## [0.13.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.12.0...v0.13.0) (2026-10-26)
 
 
