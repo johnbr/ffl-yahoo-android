@@ -61,7 +61,7 @@ class LeagueWidget : GlanceAppWidget() {
         val open = actionStartActivity<MainActivity>()
         if (s == null || s.matchups.isEmpty()) {
             Column(
-                GlanceModifier.fillMaxSize().padding(horizontal = 12.dp).clickable(open),
+                GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp).clickable(open),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(empty, style = TextStyle(color = GlanceTheme.colors.onSurface, fontSize = 13.sp))
@@ -69,9 +69,8 @@ class LeagueWidget : GlanceAppWidget() {
             return
         }
         val columns = Columns.measure(LocalContext.current, s.matchups)
-        // No background: the scores sit straight on the wallpaper. A list's items take the taps; the
-        // list itself can't.
-        LazyColumn(GlanceModifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp)) {
+        // A list's items take the taps; the list itself can't.
+        LazyColumn(GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp, vertical = 8.dp)) {
             itemsIndexed(s.matchups) { index, m ->
                 // A finished matchup's projections are just its scores again, and its counts are zero.
                 val projections = wide && !m.final
