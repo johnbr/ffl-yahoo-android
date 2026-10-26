@@ -40,6 +40,8 @@ leagues work too.
     yet to kick off: `111.74 (3)`.
   - The last play, for three minutes after it scores. Two rows tall, the play gets two lines.
   - Once the matchup is over, the projections and counts drop away and the winner turns gold.
+- **League widget.** Every matchup in the league stacked, each drawn as the matchup widget draws
+  yours, with the decimal points lined up down the stack. A stack taller than the widget scrolls.
 - **Several leagues.** Switch from the title bar.
 
 ## How it gets the data

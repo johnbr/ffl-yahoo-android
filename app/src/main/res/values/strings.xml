@@ -3,4 +3,6 @@
     <string name="app_name">FFL Live</string>
     <string name="widget_name">My matchup</string>
     <string name="widget_description">Your fantasy matchup\'s live score</string>
+    <string name="league_widget_name">League scores</string>
+    <string name="league_widget_description">Every matchup in your league, live</string>
 </resources>

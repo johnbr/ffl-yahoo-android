@@ -15,6 +15,8 @@ import androidx.work.WorkerParameters
 import io.github.johnbr.fflyahoo.app
 import io.github.johnbr.fflyahoo.core.engine.LeagueUi
 import io.github.johnbr.fflyahoo.core.present.Present
+import io.github.johnbr.fflyahoo.core.state.MatchupRow
+import io.github.johnbr.fflyahoo.core.state.TeamRow
 import io.github.johnbr.fflyahoo.data.EngineHub
 import io.github.johnbr.fflyahoo.data.SettingsStore
 import kotlinx.coroutines.CoroutineScope
@@ -40,7 +42,10 @@ private fun nowSeconds() = System.currentTimeMillis() / 1000.0
 /** Reads a snapshot saved by an older version, which carried fields this one has dropped. */
 private val snapshotJson = Json { ignoreUnknownKeys = true }
 
-/** What the widget draws — written whenever the selected league's matchup changes. */
+/**
+ * One matchup as a widget draws it — written whenever the selected league's matchup changes. The league
+ * widget stacks one per matchup (see [LeagueSnapshot]), with "me" as home and "opponent" as away.
+ */
 @Serializable
 data class WidgetSnapshot(
     val myName: String,
@@ -81,33 +86,60 @@ data class WidgetSnapshot(
 
         fun of(ui: LeagueUi, now: Double = nowSeconds()): WidgetSnapshot? {
             val mine = ui.myTeam ?: return null
-            val row = ui.scoreboard.matchups.firstOrNull { it.matchupId == mine.matchupId }
+            return of(mine.me, mine.opponent, ui.scoreboard.matchups.firstOrNull { it.matchupId == mine.matchupId }, now)
+        }
+
+        /** [first] on top as "me", [second] under it as "opponent". */
+        fun of(first: TeamRow, second: TeamRow, row: MatchupRow?, now: Double): WidgetSnapshot {
             val play = row?.lastPlay
             return WidgetSnapshot(
-                myName = mine.me.name,
-                myPoints = Present.points(mine.me.points),
-                myProjected = Present.points(mine.me.liveProjected),
-                opponentName = mine.opponent.name,
-                opponentPoints = Present.points(mine.opponent.points),
-                opponentProjected = Present.points(mine.opponent.liveProjected),
+                myName = first.name,
+                myPoints = Present.points(first.points),
+                myProjected = Present.points(first.liveProjected),
+                opponentName = second.name,
+                opponentPoints = Present.points(second.points),
+                opponentProjected = Present.points(second.liveProjected),
                 lastPlay = play?.takeIf { Present.playLineLeft(it.timestamp, now) > 0.0 }?.shortText ?: "",
-                myTrend = Present.trend(mine.me.liveProjected, mine.me.projected)?.name ?: "",
-                opponentTrend = Present.trend(mine.opponent.liveProjected, mine.opponent.projected)?.name ?: "",
+                myTrend = Present.trend(first.liveProjected, first.projected)?.name ?: "",
+                opponentTrend = Present.trend(second.liveProjected, second.projected)?.name ?: "",
                 final = row?.final ?: false,
                 leader = when (row?.leader) {
                     null -> ""
-                    mine.me.teamId -> "me"
+                    first.teamId -> "me"
                     else -> "opponent"
                 },
-                myRemaining = mine.me.remaining,
-                opponentRemaining = mine.opponent.remaining,
+                myRemaining = first.remaining,
+                opponentRemaining = second.remaining,
                 lastPlayAt = play?.timestamp ?: 0.0,
             )
         }
     }
 }
 
-/** Pushes the selected league's matchup to the widget, and keeps a slow refresh going for it. */
+/** What the league widget draws: every matchup, in the league's order, home team on top. */
+@Serializable
+data class LeagueSnapshot(val matchups: List<WidgetSnapshot>) {
+    /** This snapshot, without each play line that has had its [Present.PLAY_LINE_SECONDS] by [now]. */
+    fun expired(now: Double): LeagueSnapshot = copy(matchups = matchups.map { it.expired(now) })
+
+    companion object {
+        private fun file(context: Context) = File(context.filesDir, "widget-league.json")
+
+        fun read(context: Context): LeagueSnapshot? =
+            runCatching { snapshotJson.decodeFromString(serializer(), file(context).readText()) }.getOrNull()
+
+        fun write(context: Context, snapshot: LeagueSnapshot?) {
+            val f = file(context)
+            if (snapshot == null) f.delete() else f.writeText(Json.encodeToString(serializer(), snapshot))
+        }
+
+        fun of(ui: LeagueUi, now: Double = nowSeconds()): LeagueSnapshot? =
+            ui.scoreboard.matchups.takeIf { it.isNotEmpty() }
+                ?.let { rows -> LeagueSnapshot(rows.map { WidgetSnapshot.of(it.home, it.away, it, now) }) }
+    }
+}
+
+/** Pushes the selected league to the widgets, and keeps a slow refresh going for it. */
 class WidgetUpdater(
     private val context: Context,
     private val hub: EngineHub,
@@ -121,21 +153,43 @@ class WidgetUpdater(
      */
     val snapshot: MutableStateFlow<WidgetSnapshot?> by lazy { MutableStateFlow(WidgetSnapshot.read(context)) }
 
+    /** What the league widget shows, the same way. */
+    val league: MutableStateFlow<LeagueSnapshot?> by lazy { MutableStateFlow(LeagueSnapshot.read(context)) }
+
     /** Saves [value] for a widget drawn later, and hands it to any widget showing now. */
     suspend fun publish(value: WidgetSnapshot?) = withContext(Dispatchers.IO) {
         WidgetSnapshot.write(context, value)
         snapshot.value = value
-        scheduleExpiry(value)
+        scheduleExpiry()
+    }
+
+    /** As [publish], for the league widget. */
+    suspend fun publish(value: LeagueSnapshot?) = withContext(Dispatchers.IO) {
+        LeagueSnapshot.write(context, value)
+        league.value = value
+        scheduleExpiry()
+    }
+
+    /** Redraws whichever widgets are on the home screen. */
+    suspend fun redraw() {
+        val manager = GlanceAppWidgetManager(context)
+        if (manager.getGlanceIds(MatchupWidget::class.java).isNotEmpty()) MatchupWidget().updateAll(context)
+        if (manager.getGlanceIds(LeagueWidget::class.java).isNotEmpty()) LeagueWidget().updateAll(context)
     }
 
     /**
      * Takes the play line down when its time is up. A widget draws only when told to, and the score may
      * not move again for an hour, so the expiry gets its own one-off job — work rather than a coroutine,
-     * so it still runs when the process has gone. Each publish replaces the last one's job.
+     * so it still runs when the process has gone. Each publish replaces the last one's job with one for
+     * the first play line, on either widget, still to go.
      */
-    private fun scheduleExpiry(value: WidgetSnapshot?) {
-        val left = value?.takeIf { it.lastPlay.isNotEmpty() }?.let { Present.playLineLeft(it.lastPlayAt, nowSeconds()) } ?: return
-        if (!left.isFinite()) return
+    private fun scheduleExpiry() {
+        val now = nowSeconds()
+        val left = (listOfNotNull(snapshot.value) + league.value?.matchups.orEmpty())
+            .filter { it.lastPlay.isNotEmpty() }
+            .map { Present.playLineLeft(it.lastPlayAt, now) }
+            .filter { it.isFinite() }
+            .minOrNull() ?: return
         WorkManager.getInstance(context).enqueueUniqueWork(
             "widget-play-expiry",
             ExistingWorkPolicy.REPLACE,
@@ -155,15 +209,17 @@ class WidgetUpdater(
                     } else {
                         // An engine not built yet, or not polled yet (both happen at every process start),
                         // knows nothing: keep the saved snapshot rather than blank the widget until then.
-                        engines[league.leagueId]?.state?.filter { it.updatedAt != null }?.map(WidgetSnapshot::of) ?: emptyFlow()
+                        engines[league.leagueId]?.state?.filter { it.updatedAt != null }
+                            ?.map { WidgetSnapshot.of(it) to LeagueSnapshot.of(it) } ?: emptyFlow()
                     }
                 }
                 .distinctUntilChanged()
-                .collect { snapshot ->
+                .collect { pair ->
                     // Written whether or not a widget exists yet: one added later reads this file on
                     // its first draw, and nothing else would tell it the score until the next change.
-                    publish(snapshot)
-                    if (hasWidgets()) MatchupWidget().updateAll(context)
+                    publish(pair?.first)
+                    publish(pair?.second)
+                    redraw()
                 }
         }
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
@@ -175,20 +231,28 @@ class WidgetUpdater(
         )
     }
 
-    suspend fun hasWidgets(): Boolean =
-        GlanceAppWidgetManager(context).getGlanceIds(MatchupWidget::class.java).isNotEmpty()
+    suspend fun hasWidgets(): Boolean {
+        val manager = GlanceAppWidgetManager(context)
+        return manager.getGlanceIds(MatchupWidget::class.java).isNotEmpty() ||
+            manager.getGlanceIds(LeagueWidget::class.java).isNotEmpty()
+    }
 }
 
-/** When the widget's play line has had its [Present.PLAY_LINE_SECONDS]: redraw it without the play. */
+/** When a widget's play line has had its [Present.PLAY_LINE_SECONDS]: redraw it without the play. */
 class PlayExpiryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val widgets = applicationContext.app.widgets
-        val current = widgets.snapshot.value ?: return Result.success()
-        val expired = current.expired(nowSeconds())
-        if (expired != current) {
-            widgets.publish(expired)
-            if (widgets.hasWidgets()) MatchupWidget().updateAll(applicationContext)
+        val now = nowSeconds()
+        var changed = false
+        widgets.snapshot.value?.let { current ->
+            val expired = current.expired(now)
+            if (expired != current) widgets.publish(expired).also { changed = true }
         }
+        widgets.league.value?.let { current ->
+            val expired = current.expired(now)
+            if (expired != current) widgets.publish(expired).also { changed = true }
+        }
+        if (changed) widgets.redraw()
         return Result.success()
     }
 }
