@@ -67,8 +67,8 @@ class MatchupWidget : GlanceAppWidget() {
         val lastPlay = size.height >= ROW.height
         Column(
             GlanceModifier
-                // No background: the scores sit straight on the wallpaper.
                 .fillMaxSize()
+                .scrim()
                 .padding(horizontal = 12.dp, vertical = if (tall) 8.dp else 4.dp)
                 .clickable(actionStartActivity<MainActivity>()),
             verticalAlignment = Alignment.CenterVertically,

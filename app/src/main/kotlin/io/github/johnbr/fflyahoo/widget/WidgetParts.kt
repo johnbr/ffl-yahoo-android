@@ -12,6 +12,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.background
 import androidx.glance.color.ColorProvider
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Row
@@ -40,6 +42,13 @@ internal fun MatchupLines(s: WidgetSnapshot, projections: Boolean, counts: Boole
     TeamLine(s.myName, s.myPoints, s.myProjected, s.myTrend, s.myRemaining, s.leader == "me", s.leader == "opponent", s.final, projections, counts, columns)
     TeamLine(s.opponentName, s.opponentPoints, s.opponentProjected, s.opponentTrend, s.opponentRemaining, s.leader == "opponent", s.leader == "me", s.final, projections, counts, columns)
 }
+
+/**
+ * A faint, rounded backing behind the text, so it stays readable whatever the wallpaper has behind it.
+ * Light behind the light theme's dark text and dark behind the dark theme's light text, and translucent
+ * either way, so the wallpaper still shows through.
+ */
+internal fun GlanceModifier.scrim(): GlanceModifier = background(SCRIM).cornerRadius(16.dp)
 
 /** The last play, centred under the two score lines so it doesn't read as a third team. */
 @Composable
@@ -195,6 +204,7 @@ internal class Columns(val points: Cells, val projected: Cells, val count: Dp) {
 private val UP = ColorProvider(day = Color(0xFF2E7D32), night = Color(0xFF66BB6A))
 private val DOWN = ColorProvider(day = Color(0xFFC62828), night = Color(0xFFEF5350))
 private val WINNER = ColorProvider(day = Color(0xFFB8860B), night = Color(0xFFFBC02D))
+private val SCRIM = ColorProvider(day = Color(0x99FFFFFF), night = Color(0x99000000))
 
 private val GAP = 8.dp
 private val NAME_SIZE = 14.sp
