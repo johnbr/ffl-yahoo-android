@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceId
@@ -36,10 +36,12 @@ import io.github.johnbr.fflyahoo.ui.MainActivity
  * Every matchup in the league on the home screen, stacked, each drawn as the single-matchup widget draws
  * one: home team over away, the live projections and starters left once it is wide enough, and the
  * last play for three minutes after it scores. The figures line up down the whole stack, and a stack
- * taller than the widget scrolls. Tapping a matchup opens the app on it.
+ * a little taller than the widget gives up its gaps, then its play lines, to fit; one taller still
+ * scrolls. Tapping a matchup opens the app on it.
  */
 class LeagueWidget : GlanceAppWidget() {
-    override val sizeMode = SizeMode.Responsive(setOf(NARROW, WIDE))
+    // Exact, not Responsive: fitting the stack needs the widget's real height, not the nearest breakpoint's.
+    override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val league = context.app.settings.current().selectedLeague
@@ -59,7 +61,8 @@ class LeagueWidget : GlanceAppWidget() {
 
     @Composable
     private fun Content(s: LeagueSnapshot?, empty: String) {
-        val wide = LocalSize.current.width >= WIDE.width
+        val size = LocalSize.current
+        val wide = size.width >= WIDE
         val open = actionStartActivity<MainActivity>()
         if (s == null || s.matchups.isEmpty()) {
             Column(
@@ -70,32 +73,49 @@ class LeagueWidget : GlanceAppWidget() {
             }
             return
         }
-        val columns = Columns.measure(LocalContext.current, s.matchups)
+        val context = LocalContext.current
+        val columns = Columns.measure(context, s.matchups)
+        // A row cut in half at the bottom reads as broken, so a stack a little too tall for the widget
+        // closes its gaps, and then drops its play lines, when that makes it fit. One that won't fit
+        // either way keeps both and scrolls: tight gaps only make a long list harder to read.
+        val lines = LineHeights.measure(context)
+        val room = size.height - PADDING * 2
+        val teams = lines.team * (2 * s.matchups.size)
+        val plays = lines.play * s.matchups.count { it.lastPlay.isNotEmpty() }
+        fun fits(gap: Dp, withPlays: Boolean) = teams + (if (withPlays) plays else 0.dp) + gap * (s.matchups.size - 1) <= room
+        val (gap, showPlays) = when {
+            fits(GAP, true) -> GAP to true
+            fits(TIGHT_GAP, true) -> TIGHT_GAP to true
+            fits(TIGHT_GAP, false) -> TIGHT_GAP to false
+            else -> GAP to true
+        }
         // A list's items take the taps; the list itself can't.
-        LazyColumn(GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        LazyColumn(GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp, vertical = PADDING)) {
             itemsIndexed(s.matchups) { index, m ->
                 // A finished matchup's projections are just its scores again, and its counts are zero.
                 val projections = wide && !m.final
                 val counts = projections && (m.myRemaining != null || m.opponentRemaining != null)
                 // Its lineup, in the app: Glance hands the parameter to the activity as an intent extra.
                 val tap = actionStartActivity<MainActivity>(actionParametersOf(MATCHUP to m.matchupId))
-                Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else GAP).clickable(tap)) {
+                Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else gap).clickable(tap)) {
                     MatchupLines(m, projections, counts, columns)
-                    if (m.lastPlay.isNotEmpty()) PlayLine(m.lastPlay, maxLines = 1)
+                    if (showPlays && m.lastPlay.isNotEmpty()) PlayLine(m.lastPlay, maxLines = 1)
                 }
             }
         }
     }
 
     companion object {
-        /** Names and scores only. */
-        val NARROW = DpSize(180.dp, 110.dp)
-
         /** Wide enough for the projections and counts beside the scores. */
-        val WIDE = DpSize(250.dp, 110.dp)
+        private val WIDE = 250.dp
 
         /** Between one matchup and the next. */
         private val GAP = 8.dp
+
+        /** The same, when the stack is short of room. */
+        private val TIGHT_GAP = 2.dp
+
+        private val PADDING = 8.dp
 
         private val MATCHUP = ActionParameters.Key<String>(MainActivity.EXTRA_MATCHUP)
     }
