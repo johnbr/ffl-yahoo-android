@@ -47,6 +47,41 @@ leagues work too.
   League.
 - **Several leagues.** Switch from the title bar.
 
+<table>
+  <tr>
+    <td valign="top" width="33%">
+      <img src="docs/images/league.png" width="100%"
+           alt="The League tab: every matchup with both scores, both live projections in green or red, each team's record, and the play that last moved each score">
+      <br><sub><b>League</b>: every matchup, with the play that last moved its score.</sub>
+    </td>
+    <td valign="top" width="33%">
+      <img src="docs/images/league-matchup.png" width="100%"
+           alt="A matchup opened on the League tab: both projections against the morning's, the win bar, and the two lineups facing each other by slot with each player's points, projection, game and stat line">
+      <br><sub><b>Tap a matchup</b> for both lineups and the win probability.</sub>
+    </td>
+    <td valign="top" width="33%">
+      <img src="docs/images/nfl.png" width="100%"
+           alt="The NFL tab: the live game with its clock, down and distance, field bar and last play, then the later and final games folded under their headings">
+      <br><sub><b>NFL</b>: live games first, the rest folded under "later this week" and "final".</sub>
+    </td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td valign="top" width="50%">
+      <img src="docs/images/widget-matchup.png" width="100%"
+           alt="The matchup widget on a home screen: both teams with their live projections in green or red, their scores, and how many starters each still has playing">
+      <br><sub><b>Matchup widget</b>: your score, live projections and starters left to play.</sub>
+    </td>
+    <td valign="top" width="50%">
+      <img src="docs/images/widget-league.png" width="100%"
+           alt="The league widget: every matchup stacked with the decimal points lined up, and a finished matchup with its winner in gold and the projections and counts gone">
+      <br><sub><b>League widget</b>: every matchup; a finished one turns its winner gold.</sub>
+    </td>
+  </tr>
+</table>
+
 ## How it gets the data
 
 It reads Yahoo's **GameChannel** tier, the same anonymous endpoints `sports.yahoo.com/nfl/gamechannel/`
