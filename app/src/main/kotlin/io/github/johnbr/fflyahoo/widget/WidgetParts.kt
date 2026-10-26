@@ -53,11 +53,11 @@ internal fun GlanceModifier.scrim(): GlanceModifier = background(SCRIM).cornerRa
 /** The last play, centred under the two score lines so it doesn't read as a third team. */
 @Composable
 internal fun PlayLine(text: String, maxLines: Int) {
-    Spacer(GlanceModifier.height(2.dp))
+    Spacer(GlanceModifier.height(PLAY_GAP))
     Text(
         text,
         GlanceModifier.fillMaxWidth(),
-        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = 12.sp, textAlign = TextAlign.Center),
+        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = PLAY_SIZE, textAlign = TextAlign.Center),
         maxLines = maxLines,
     )
 }
@@ -178,24 +178,52 @@ internal class Columns(val points: Cells, val projected: Cells, val count: Dp) {
             val count = column(counts, COUNT_SIZE, bold = false).whole - GAP + COUNT_GAP
             return Columns(column(points, POINTS_SIZE, bold = true), column(projected, PROJECTED_SIZE, bold = false), count)
         }
+    }
+}
 
-        /**
-         * The font the home screen draws the widget's text in. Glance's text views name no font, so they
-         * take the host theme's device-default text appearance — Google Sans Text on a Pixel — and not
-         * this app's [Typeface.DEFAULT], which is Roboto there. Its digits are not all one width: a bold
-         * `.00` is wider than Roboto's, which is what [measure] had been sizing the cell for.
-         */
-        private fun widgetTypeface(context: Context, style: Int): Typeface {
-            val attrs = context.obtainStyledAttributes(
-                android.R.style.TextAppearance_DeviceDefault,
-                intArrayOf(android.R.attr.fontFamily),
-            )
-            val family = try {
-                attrs.getString(0)
-            } finally {
-                attrs.recycle()
+/**
+ * The font the home screen draws the widget's text in. Glance's text views name no font, so they
+ * take the host theme's device-default text appearance — Google Sans Text on a Pixel — and not
+ * this app's [Typeface.DEFAULT], which is Roboto there. Its digits are not all one width: a bold
+ * `.00` is wider than Roboto's, which is what [Columns.measure] had been sizing the cell for.
+ */
+private fun widgetTypeface(context: Context, style: Int): Typeface {
+    val attrs = context.obtainStyledAttributes(
+        android.R.style.TextAppearance_DeviceDefault,
+        intArrayOf(android.R.attr.fontFamily),
+    )
+    val family = try {
+        attrs.getString(0)
+    } finally {
+        attrs.recycle()
+    }
+    return if (family.isNullOrBlank()) Typeface.defaultFromStyle(style) else Typeface.create(family, style)
+}
+
+/**
+ * How tall the widgets' lines are drawn, in dp, at the user's font scale. A text view with font padding
+ * (Glance's are) is as tall as its font's top-to-bottom extent, which is more than its size: a 16sp line
+ * of points is over 20dp.
+ */
+internal class LineHeights(val team: Dp, val play: Dp) {
+    companion object {
+        fun measure(context: Context): LineHeights {
+            val metrics = context.resources.displayMetrics
+            fun height(size: TextUnit, bold: Boolean): Dp {
+                val style = if (bold) Typeface.BOLD else Typeface.NORMAL
+                return listOf(Typeface.defaultFromStyle(style), widgetTypeface(context, style)).maxOf { face ->
+                    val paint = Paint().apply {
+                        textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, size.value, metrics)
+                        typeface = face
+                    }
+                    // 10% over the font's extent: drawn on the emulator, a points line measured at 21.2dp
+                    // takes 22.9dp.
+                    paint.fontMetrics.let { it.bottom - it.top } * 1.1f / metrics.density
+                }.dp
             }
-            return if (family.isNullOrBlank()) Typeface.defaultFromStyle(style) else Typeface.create(family, style)
+            // A team line is as tall as its tallest text: the points, or a winner's name.
+            val team = maxOf(height(POINTS_SIZE, bold = true), height(WINNER_NAME_SIZE, bold = true))
+            return LineHeights(team, height(PLAY_SIZE, bold = false) + PLAY_GAP)
         }
     }
 }
@@ -213,6 +241,8 @@ private val PROJECTED_SIZE = 12.sp
 private val POINTS_SIZE = 16.sp
 private val COUNT_SIZE = 12.sp
 private val COUNT_GAP = 4.dp
+private val PLAY_SIZE = 12.sp
+private val PLAY_GAP = 2.dp
 
 /** `(3)`, or nothing for a side the tier can't count. */
 private fun count(remaining: Int?): String = remaining?.let { "($it)" } ?: ""
