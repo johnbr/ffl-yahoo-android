@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.11.0...v0.12.0) (2026-10-26)
+
+
+### Features
+
+* widgets get a faint backing so the text reads on any wallpaper ([#49](https://github.com/johnbr/ffl-yahoo-android/issues/49)) ([2e9a96c](https://github.com/johnbr/ffl-yahoo-android/commit/2e9a96c95a31841c2b52ad63d5e33426ea129579))
+
 ## [0.11.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.10.0...v0.11.0) (2026-10-26)
 
 
