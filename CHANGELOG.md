@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.10.0...v0.11.0) (2026-10-26)
+
+
+### Features
+
+* a league widget, every matchup stacked ([#44](https://github.com/johnbr/ffl-yahoo-android/issues/44)) ([db4be75](https://github.com/johnbr/ffl-yahoo-android/commit/db4be754a8654819c384f1f4e9a54f8be48964fb))
+
 ## [0.10.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.9.0...v0.10.0) (2026-10-25)
 
 
