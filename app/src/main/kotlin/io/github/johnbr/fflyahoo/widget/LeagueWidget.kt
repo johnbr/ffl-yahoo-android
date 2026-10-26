@@ -12,6 +12,8 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
@@ -34,7 +36,7 @@ import io.github.johnbr.fflyahoo.ui.MainActivity
  * Every matchup in the league on the home screen, stacked, each drawn as the single-matchup widget draws
  * one: home team over away, the live projections and starters left once it is wide enough, and the
  * last play for three minutes after it scores. The figures line up down the whole stack, and a stack
- * taller than the widget scrolls.
+ * taller than the widget scrolls. Tapping a matchup opens the app on it.
  */
 class LeagueWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(NARROW, WIDE))
@@ -75,7 +77,9 @@ class LeagueWidget : GlanceAppWidget() {
                 // A finished matchup's projections are just its scores again, and its counts are zero.
                 val projections = wide && !m.final
                 val counts = projections && (m.myRemaining != null || m.opponentRemaining != null)
-                Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else GAP).clickable(open)) {
+                // Its lineup, in the app: Glance hands the parameter to the activity as an intent extra.
+                val tap = actionStartActivity<MainActivity>(actionParametersOf(MATCHUP to m.matchupId))
+                Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else GAP).clickable(tap)) {
                     MatchupLines(m, projections, counts, columns)
                     if (m.lastPlay.isNotEmpty()) PlayLine(m.lastPlay, maxLines = 1)
                 }
@@ -92,6 +96,8 @@ class LeagueWidget : GlanceAppWidget() {
 
         /** Between one matchup and the next. */
         private val GAP = 8.dp
+
+        private val MATCHUP = ActionParameters.Key<String>(MainActivity.EXTRA_MATCHUP)
     }
 }
 

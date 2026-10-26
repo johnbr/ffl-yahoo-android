@@ -1,5 +1,6 @@
 package io.github.johnbr.fflyahoo.ui
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -21,12 +22,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Not again on a rotation: the request was already handled when the activity first started.
+        if (savedInstanceState == null) takeMatchup(intent)
         enableEdgeToEdge()
         setContent {
             FflTheme {
                 Surface { AppRoot(vm) }
             }
         }
+    }
+
+    // singleTop: a widget tap while the app is already open arrives here rather than in onCreate.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        takeMatchup(intent)
+    }
+
+    private fun takeMatchup(intent: Intent?) {
+        intent?.getStringExtra(EXTRA_MATCHUP)?.takeIf { it.isNotEmpty() }?.let { vm.openMatchup.value = it }
     }
 
     // The app polls while it is on screen; the live service keeps it polling when it is not.
@@ -41,8 +55,11 @@ class MainActivity : ComponentActivity() {
         super.onStop()
     }
 
-    private companion object {
-        const val OWNER = "ui"
+    companion object {
+        private const val OWNER = "ui"
+
+        /** The matchup a league-widget tap asks for, `w7.m3`. */
+        const val EXTRA_MATCHUP = "matchup"
     }
 }
 
@@ -59,6 +76,9 @@ private fun AppRoot(vm: MainViewModel) {
     val ui by vm.league.collectAsStateWithLifecycle()
     val s = settings ?: return // DataStore has not answered yet
     var screen by rememberSaveable(stateSaver = ScreenSaver) { mutableStateOf<Screen>(Screen.Main) }
+    // A widget tap shows its matchup whatever screen the app was left on.
+    val asked by vm.openMatchup.collectAsStateWithLifecycle()
+    if (asked != null && screen != Screen.Main) screen = Screen.Main
 
     if (s.leagues.isEmpty()) {
         AddLeagueScreen(vm, onDone = { screen = Screen.Main }, onBack = null)

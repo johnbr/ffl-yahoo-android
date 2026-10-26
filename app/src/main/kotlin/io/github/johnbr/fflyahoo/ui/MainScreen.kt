@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -46,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.johnbr.fflyahoo.core.engine.LeagueEngine
 import io.github.johnbr.fflyahoo.core.engine.LeagueUi
 import io.github.johnbr.fflyahoo.core.present.Present
@@ -70,6 +72,14 @@ fun MainScreen(settings: AppSettings, ui: LeagueUi?, engine: LeagueEngine?, vm: 
     val tabs = if (league.teamId != null) Tab.entries else listOf(Tab.LEAGUE, Tab.NFL)
     var tab by rememberSaveable(league.leagueId) { mutableStateOf(tabs.first()) }
     if (tab !in tabs) tab = tabs.first()
+    // A league-widget tap: your own matchup on its tab, any other on the League tab, once the league has
+    // loaded and knows which is which. Only that tab is handed the request, and it opens the matchup.
+    val asked by vm.openMatchup.collectAsStateWithLifecycle()
+    val target = asked?.takeIf { ui?.updatedAt != null }
+        ?.let { if (Tab.MINE in tabs && ui?.myTeam?.matchupId == it) Tab.MINE else Tab.LEAGUE }
+    if (target != null && tab != target) tab = target
+    val focus = asked?.takeIf { target == tab }
+    val focused = { vm.openMatchup.value = null }
 
     Scaffold(
         topBar = {
@@ -103,8 +113,8 @@ fun MainScreen(settings: AppSettings, ui: LeagueUi?, engine: LeagueEngine?, vm: 
                 when {
                     ui == null || ui.updatedAt == null && ui.error == null -> Centered("Waiting for league data…")
                     else -> when (tab) {
-                        Tab.MINE -> MyMatchupTab(ui, engine)
-                        Tab.LEAGUE -> LeagueTab(ui, engine)
+                        Tab.MINE -> MyMatchupTab(ui, engine, focus, focused)
+                        Tab.LEAGUE -> LeagueTab(ui, engine, focus, focused)
                         Tab.NFL -> NflTab(ui, engine)
                     }
                 }
@@ -228,10 +238,15 @@ private fun rememberPanels(ui: LeagueUi, engine: LeagueEngine?): MatchupPanels {
 }
 
 @Composable
-private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?) {
+private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, onFocused: () -> Unit) {
     val panels = rememberPanels(ui, engine)
     val mine = ui.myTeam
     val row = ui.scoreboard.matchups.firstOrNull { it.matchupId == mine?.matchupId } ?: ui.scoreboard.matchups.firstOrNull()
+    LaunchedEffect(focus) {
+        if (focus == null) return@LaunchedEffect
+        if (focus == row?.matchupId) panels.open = focus to Panel.ROSTER
+        onFocused()
+    }
     // Under the matchup, the games its starters are playing in right now, as the NFL tab shows them.
     val live = Present.liveGamesFor(ui.nfl.games, ui.myClubs)
     val now = rememberBannerClock(live, ui.updatedAt)
@@ -271,9 +286,20 @@ private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?) {
 }
 
 @Composable
-private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?) {
+private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, onFocused: () -> Unit) {
     val panels = rememberPanels(ui, engine)
-    LazyColumn(Modifier.fillMaxSize()) {
+    val list = rememberLazyListState()
+    LaunchedEffect(focus) {
+        if (focus == null) return@LaunchedEffect
+        val index = ui.scoreboard.matchups.indexOfFirst { it.matchupId == focus }
+        // Asked for by a widget showing another league or week: nothing here to open.
+        if (index >= 0) {
+            panels.open = focus to Panel.ROSTER
+            list.scrollToItem(index + if (ui.scoreboard.partial) 1 else 0)
+        }
+        onFocused()
+    }
+    LazyColumn(Modifier.fillMaxSize(), state = list) {
         if (ui.scoreboard.partial) item { Muted("Some rosters could not be loaded.", Modifier.padding(horizontal = 16.dp)) }
         items(ui.scoreboard.matchups, key = { it.matchupId }) { row ->
             MatchupRowView(
