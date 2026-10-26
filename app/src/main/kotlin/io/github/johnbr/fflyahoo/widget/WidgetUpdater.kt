@@ -68,6 +68,8 @@ data class WidgetSnapshot(
     val opponentRemaining: Int? = null,
     /** When [lastPlay] was scored, epoch seconds; 0 when unknown. */
     val lastPlayAt: Double = 0.0,
+    /** `w7.m3`: which matchup a tap on it opens in the app. */
+    val matchupId: String = "",
 ) {
     /** This snapshot, without its play line if that has had its [Present.PLAY_LINE_SECONDS] by [now]. */
     fun expired(now: Double): WidgetSnapshot =
@@ -111,6 +113,7 @@ data class WidgetSnapshot(
                 myRemaining = first.remaining,
                 opponentRemaining = second.remaining,
                 lastPlayAt = play?.timestamp ?: 0.0,
+                matchupId = row?.matchupId ?: "",
             )
         }
     }

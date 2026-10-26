@@ -12,6 +12,7 @@ import io.github.johnbr.fflyahoo.core.seed.Seed
 import io.github.johnbr.fflyahoo.data.AppSettings
 import io.github.johnbr.fflyahoo.data.LeagueConfig
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -40,6 +41,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     val selectedEngine: LeagueEngine? get() = engine.value
+
+    /** A matchup to bring up, asked for by a tap on the league widget; cleared once it is showing. */
+    val openMatchup = MutableStateFlow<String?>(null)
 
     val liveServiceRunning: StateFlow<Boolean> = app.scheduler.running
 
