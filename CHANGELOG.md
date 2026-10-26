@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.12.0...v0.13.0) (2026-10-26)
+
+
+### Features
+
+* tapping a matchup on the league widget opens it in the app ([#51](https://github.com/johnbr/ffl-yahoo-android/issues/51)) ([f63b34c](https://github.com/johnbr/ffl-yahoo-android/commit/f63b34c9020a6dae0e94bbaea3346fca02947861))
+
 ## [0.12.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.11.0...v0.12.0) (2026-10-26)
 
 
