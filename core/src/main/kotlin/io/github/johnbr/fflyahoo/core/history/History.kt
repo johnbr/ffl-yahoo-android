@@ -286,6 +286,16 @@ object History {
         return clubs
     }
 
+    /**
+     * The clubs with no game in [week]: its byes. Empty for a week nobody plays in, and for one most clubs
+     * sit out — a playoff week, where a club without a game is out, not resting. The NFL never rests more
+     * than six at once.
+     */
+    fun byeClubs(schedule: Map<String, Map<Int, Fixture>>, week: Int): Set<String> {
+        val idle = schedule.filterValues { week !in it }.keys
+        return if (idle.size * 2 < schedule.size) idle else emptySet()
+    }
+
     /** Every week anyone plays in — the regular season, bye weeks and all. */
     fun seasonWeeks(schedule: Map<String, Map<Int, Fixture>>): List<Int> = schedule.values.flatMap { it.keys }.toSortedSet().toList()
 

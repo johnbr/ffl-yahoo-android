@@ -31,6 +31,9 @@ const val ESPN_TTL_SECONDS = 6 * 3600.0
 /** ESPN's player list and the schedule. */
 const val DIRECTORY_TTL_SECONDS = 24 * 3600.0
 
+/** After a schedule fetch fails, how long the live poll leaves ESPN alone — a bye line is not worth asking every poll for. */
+const val SCHEDULE_RETRY_SECONDS = 15 * 60.0
+
 /** Seeds fetched at once on a cold start — a season of them is the first opening's whole cost. */
 const val SEEDS_AT_ONCE = 4
 
@@ -61,6 +64,7 @@ class SeasonHistory(
     private var players: Kept<Pair<Int, List<History.EspnPlayer>>>? = null
     private val lines = HashMap<Long, Kept<EspnLines>>()
     private val lock = Mutex()
+    private var scheduleRetryAt = 0.0
 
     // --- persistence --------------------------------------------------------------------------------
 
@@ -146,6 +150,33 @@ class SeasonHistory(
         current = Kept(now, week to seed)
         open[week] = Kept(now, History.weekProjections(seed, leagueId))
         return seed
+    }
+
+    /**
+     * The clubs on a bye in the seed's week, by Yahoo club id, from ESPN's schedule. For the live poll, so it
+     * never throws and never waits on a season being opened: no lock, and a failed fetch keeps the last
+     * schedule (or none) for [SCHEDULE_RETRY_SECONDS] rather than asking ESPN again every poll. Empty when
+     * the schedule cannot be had — those players then read as before, with no game line.
+     */
+    suspend fun byes(seed: JsonObject, now: Double): Set<String> {
+        val weekInfo = History.seedWeekInfo(seed, leagueId)
+        val year = History.seasonOf(weekInfo) ?: return emptySet()
+        val week = (weekInfo?.get("week") as? JsonPrimitive)?.content?.toIntOrNull() ?: 0
+        if (week <= 0) return emptySet()
+        var kept = schedule
+        var usable = kept != null && kept.value.first == year
+        if (!(usable && kept!!.fresh(now, DIRECTORY_TTL_SECONDS)) && now >= scheduleRetryAt) {
+            try {
+                scheduleFor(year, now)
+                kept = schedule
+                usable = true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) { // a missing bye line is no reason to fail a poll
+                scheduleRetryAt = now + SCHEDULE_RETRY_SECONDS
+            }
+        }
+        return if (usable) History.byeClubs(kept!!.value.second, week) else emptySet()
     }
 
     private suspend fun scheduleFor(year: Int, now: Double): Map<String, Map<Int, History.Fixture>> {

@@ -238,7 +238,12 @@ class SeedClient(private val fetch: Fetcher, val leagueId: String, private val s
 }
 
 /** One league's refresh: its seed plus the shared live feeds. Port of `RedzoneClient.async_refresh*`. */
-class LeagueSource(val seed: SeedClient, val relay: RelayClient) {
+class LeagueSource(
+    val seed: SeedClient,
+    val relay: RelayClient,
+    /** The clubs on a bye this week, from the seed — Yahoo's feeds do not say. */
+    private val byes: (suspend (JsonObject, Double) -> Set<String>)? = null,
+) {
     val leagueId: String get() = seed.leagueId
 
     var lastGood: LeagueData? = null
@@ -250,8 +255,17 @@ class LeagueSource(val seed: SeedClient, val relay: RelayClient) {
             val feeds = async { relay.liveFeeds(now) }
             payload.await() to feeds.await()
         }
+        val bye = byes?.let { find ->
+            try {
+                find(payload, now)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) { // a missing bye line is no reason to fail a poll
+                emptySet()
+            }
+        } ?: emptySet()
         val data = try {
-            Seed.leagueFromPayloads(payload, feeds.first, feeds.second, leagueId, now)
+            Seed.leagueFromPayloads(payload, feeds.first, feeds.second, leagueId, now, bye)
         } catch (e: CancellationException) {
             throw e
         } catch (e: RuntimeException) {

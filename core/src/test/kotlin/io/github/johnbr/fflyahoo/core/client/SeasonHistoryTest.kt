@@ -151,6 +151,28 @@ class SeasonHistoryTest {
         assertNotNull(s.rows.first { it.week == 10 }.projected)
     }
 
+    private fun weekSeed(fake: Fake, week: Int) = runBlocking { History.parse(fake.fetch(History.seedWeekUrl(league, week))).jsonObject }
+
+    @Test
+    fun `the live poll learns the week's byes from the schedule`() {
+        val fake = Fake()
+        val h = history(fake)
+        val seed = weekSeed(fake, 11)
+        assertTrue("17" in runBlocking { h.byes(seed, now) }) // New England
+        runBlocking { h.byes(seed, now + 10) } // kept a day: the next poll asks nobody
+        assertEquals(1, fake.calls.count { it == History.espnScheduleUrl(2026) })
+    }
+
+    @Test
+    fun `no schedule, no byes, and ESPN is not asked every poll`() {
+        val fake = Fake(fail = listOf(History.espnScheduleUrl(2026)))
+        val h = history(fake)
+        val seed = weekSeed(fake, 11)
+        assertEquals(emptySet<String>(), runBlocking { h.byes(seed, now) })
+        assertEquals(emptySet<String>(), runBlocking { h.byes(seed, now + 10) })
+        assertEquals(1, fake.calls.count { it == History.espnScheduleUrl(2026) })
+    }
+
     @Test
     fun `no schedule, no season`() {
         assertThrows<Exception> { season(history(Fake(fail = listOf(History.espnScheduleUrl(2026))))) }

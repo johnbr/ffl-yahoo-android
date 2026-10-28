@@ -38,7 +38,7 @@ object LeagueState {
         if (data == null) return SCAN_INTERVAL_NEAR_GAME_SECONDS
         val states = data.matchups.flatMap { m -> m.players.map { it.gameState } }.toSet()
         if ("in" in states) return SCAN_INTERVAL_LIVE_SECONDS
-        if (previous != null && states.isNotEmpty() && states.all { it == "unknown" }) {
+        if (previous != null && states.isNotEmpty() && states.all { it == "unknown" || it == "bye" }) {
             return minOf(previous, SCAN_INTERVAL_NEAR_GAME_SECONDS)
         }
         if (states.any { it in setOf("pre", "unknown", "delayed") }) return SCAN_INTERVAL_NEAR_GAME_SECONDS

@@ -81,14 +81,16 @@ class EngineHub(
             }
             // New, or the team changed: a fresh engine (the history file carries over).
             runners.remove(league.leagueId)?.cancel()
+            val season = seasonFor(league.leagueId)
             val engine = LeagueEngine(
-                source = LeagueSource(SeedClient(fetch, league.leagueId), relay),
+                // The bye clubs come from the same ESPN schedule the season panel reads, kept a day.
+                source = LeagueSource(SeedClient(fetch, league.leagueId), relay, byes = season::byes),
                 history = FileHistoryStore(context, league.leagueId),
                 clock = { System.currentTimeMillis() / 1000.0 },
                 scope = scope,
                 leagueName = league.name,
                 teamId = league.teamId,
-                season = seasonFor(league.leagueId),
+                season = season,
             )
             engine.loadHistory()
             keys[league.leagueId] = key
