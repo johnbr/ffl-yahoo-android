@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import io.github.johnbr.fflyahoo.BuildConfig
 import io.github.johnbr.fflyahoo.data.AppSettings
 import io.github.johnbr.fflyahoo.data.LeagueConfig
 import kotlinx.coroutines.launch
@@ -225,6 +226,12 @@ fun SettingsScreen(vm: MainViewModel, settings: AppSettings, onBack: () -> Unit,
                 "Fantasy data provided by Yahoo Fantasy. Past weeks' player stat lines and the NFL schedule come from ESPN. " +
                     "This app is not affiliated with, endorsed by, or sponsored by Yahoo, ESPN or the NFL. " +
                     "Points are computed from Yahoo's live stat feed with your league's own scoring settings; Yahoo's own live scoring trails the play by 30–60 seconds.",
+                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                "Version ${BuildConfig.VERSION_NAME}",
                 Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
