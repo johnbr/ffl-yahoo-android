@@ -56,6 +56,9 @@ object Seed {
         gamesText: String,
         leagueId: String,
         now: Double,
+        // The clubs on a bye this week, by club id — ESPN's schedule, which the caller supplies; the feeds
+        // here cannot tell a bye from a short feed.
+        byes: Set<String> = emptySet(),
     ): LeagueData {
         val league = league(service(seed), leagueId)
         val service = service(seed)
@@ -87,7 +90,7 @@ object Seed {
                 pair.forEachIndexed { side, teamId ->
                     val team = teams[pyStr(teamId)] as? JsonObject ?: JsonObject(emptyMap())
                     val roster = roster(
-                        team, service, statsByPlayer, defenseByTeam, modifiers, games, side, heldOver, now,
+                        team, service, statsByPlayer, defenseByTeam, modifiers, games, side, heldOver, now, byes,
                     )
                     players += roster
                     sides += team(team, roster)
@@ -124,8 +127,11 @@ object Seed {
         games: Map<String, GameState>,
         side: Int,
         heldOver: Set<String>,
+        byes: Set<String>,
     ): Player {
         val nflTeam = strOr(meta["teamId"])
+        // A bye is only ever ESPN's word for it, and only for a club with no game in the feed.
+        val bye = nflTeam in byes && games[nflTeam] == null
         // A held-over club's row is last week's game, which says nothing about this one beyond that it has
         // not been played yet.
         val game = if (nflTeam in heldOver) null else games[nflTeam]
@@ -139,7 +145,7 @@ object Seed {
             projected = projected,
             liveProjected = Relay.liveProjection(points, projected, game),
             statLine = Scoring.statLine(stats),
-            gameNote = game?.noteFor(nflTeam) ?: "",
+            gameNote = game?.noteFor(nflTeam) ?: if (bye) "Bye" else "",
             kickoff = game?.let { Relay.epoch(it.startTime) },
             hasBall = game?.hasBall(nflTeam) ?: false,
             redZone = game?.inRedZone(nflTeam) ?: false,
@@ -147,9 +153,9 @@ object Seed {
             teamSide = side,
             stats = stats,
             nflTeam = strOr(meta["team"]),
-            // A club with no row in the games feed reads `unknown`, never `bye`: a real bye and a feed
-            // that arrived short look identical from here.
-            gameState = game?.state ?: if (nflTeam in heldOver) "pre" else "unknown",
+            // A club with no row in the games feed reads `unknown` unless ESPN's schedule says it is a bye:
+            // a real bye and a feed that arrived short look identical from here.
+            gameState = game?.state ?: if (nflTeam in heldOver) "pre" else if (bye) "bye" else "unknown",
         )
     }
 
@@ -163,6 +169,7 @@ object Seed {
         side: Int,
         heldOver: Set<String>,
         now: Double,
+        byes: Set<String>,
     ): List<Player> {
         val metaAll = service.obj("players") ?: JsonObject(emptyMap())
         return team.list("players").filterIsInstance<JsonObject>().map { entry ->
@@ -174,10 +181,12 @@ object Seed {
                 // No game of this club's this week has been played, so these stats are last week's —
                 // see Relay.WEEK_SLACK_SECONDS.
                 club in heldOver || (game != null && Relay.yetToKickOff(game, now)) -> emptyMap()
+                // No game this week at all: whatever the relay holds is last week's.
+                game == null && club in byes -> emptyMap()
                 isDefense(entry, meta) -> defenseByTeam[club] ?: emptyMap()
                 else -> statsByPlayer[pid] ?: emptyMap()
             }
-            player(entry, meta, stats, modifiers, games, side, heldOver)
+            player(entry, meta, stats, modifiers, games, side, heldOver, byes)
         }
     }
 

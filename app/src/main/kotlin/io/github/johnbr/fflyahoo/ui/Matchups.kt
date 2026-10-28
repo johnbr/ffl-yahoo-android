@@ -318,7 +318,11 @@ private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: Z
     val bg = if (player.gameState == "in") ffl.liveTint else Color.Transparent
     val live = Present.hasLive(player.liveProjected, player.projected)
     val proj = if (live) player.liveProjected else player.projected
-    val game = if (player.gameState == "pre" && player.kickoff != null) {
+    // A finished game gets no line: the gold points already say "done", and his
+    // club's result ("Final W 26-7 @ Pit") is not what a fantasy lineup is for.
+    val game = if (player.gameState == "post") {
+        ""
+    } else if (player.gameState == "pre" && player.kickoff != null) {
         listOf(Present.kickoff(player.kickoff, now, zone), player.game).filter { it.isNotEmpty() }.joinToString(" ")
     } else {
         player.game
