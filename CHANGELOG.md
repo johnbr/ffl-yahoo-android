@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.13.1...v0.14.0) (2026-10-28)
+
+
+### Features
+
+* lineup says "Bye" for a bye week and drops a finished player's team result ([#56](https://github.com/johnbr/ffl-yahoo-android/issues/56)) ([469732d](https://github.com/johnbr/ffl-yahoo-android/commit/469732d149b296921ffca7ef3c16562a63778ed3))
+
 ## [0.13.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.13.0...v0.13.1) (2026-10-26)
 
 
