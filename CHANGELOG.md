@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.15.0...v0.15.1) (2026-10-29)
+
+
+### Bug Fixes
+
+* align a player's season header with his team's side ([#60](https://github.com/johnbr/ffl-yahoo-android/issues/60)) ([6fbebd0](https://github.com/johnbr/ffl-yahoo-android/commit/6fbebd0789981899085566a7d1c105d7f622b34d))
+
 ## [0.15.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.14.0...v0.15.0) (2026-10-28)
 
 
