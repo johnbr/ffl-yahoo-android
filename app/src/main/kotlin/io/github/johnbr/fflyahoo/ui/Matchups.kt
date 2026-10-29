@@ -79,6 +79,7 @@ fun MatchupRowView(
     history: List<PlayRow>?,
     single: Boolean = false,
     season: Result<History.PlayerSeason>? = null,
+    player: String? = null,
     onPlayer: (String) -> Unit = {},
     onBack: () -> Unit = {},
 ) {
@@ -117,7 +118,13 @@ fun MatchupRowView(
                         PanelLink("‹ Lineup", Alignment.TopStart) { onToggle(Panel.ROSTER) }
                         if (history == null) Loading("Loading plays…") else History(history)
                     }
-                    Panel.PLAYER -> SeasonView(season, onBack)
+                    Panel.PLAYER -> {
+                        // An away player's season keeps to his side of the lineup, mirrored as his block is.
+                        val awaySide = detail?.sides?.getOrNull(1)
+                        val away = player != null && awaySide != null &&
+                            (awaySide.starters + awaySide.bench).any { it.playerId == player }
+                        SeasonView(season, onBack, away)
+                    }
                     null -> {}
                 }
             }
@@ -460,23 +467,35 @@ fun History(plays: List<PlayRow>) {
  * this week's are still running, so they stay uncoloured.
  */
 @Composable
-fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit) {
+fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit, away: Boolean = false) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            "‹ Lineup",
-            Modifier.clickable(onClick = onBack).padding(end = 12.dp, top = 4.dp, bottom = 4.dp),
-            color = MaterialTheme.colorScheme.primary,
-            fontSize = 13.sp,
-        )
+    // The way back and the name sit on the side of the lineup the player was opened from: an away
+    // player's are mirrored to the right, the link on the outside edge, as his block is.
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = if (away) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val back = @Composable {
+            Text(
+                "‹ Lineup",
+                Modifier.clickable(onClick = onBack)
+                    .padding(start = if (away) 12.dp else 0.dp, end = if (away) 0.dp else 12.dp, top = 4.dp, bottom = 4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 13.sp,
+            )
+        }
+        if (!away) back()
         season?.getOrNull()?.let { s ->
             Text(
                 listOf(s.name, if (s.nflTeam.isNotEmpty()) "(${s.nflTeam})" else "", s.position).filter { it.isNotEmpty() }.joinToString(" "),
+                Modifier.weight(1f, fill = false),
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
+        if (away) back()
     }
     val s = when {
         season == null -> return Loading("Loading season…")
@@ -492,7 +511,8 @@ fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit) {
         ).joinToString(" · "),
         fontSize = 12.sp,
         color = muted,
-        modifier = Modifier.padding(bottom = 4.dp),
+        textAlign = if (away) TextAlign.End else TextAlign.Start,
+        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
     )
     SeasonLine("Wk", "Opp", "Proj", "Pts", header = true)
     for (row in s.rows) {
