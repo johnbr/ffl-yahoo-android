@@ -264,6 +264,7 @@ private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, on
                     history = panels.histories[row.matchupId],
                     single = true,
                     season = panels.player?.let { panels.seasons[it] },
+                player = panels.player,
                     onPlayer = { panels.openPlayer(row.matchupId, it) },
                     onBack = { panels.open = row.matchupId to Panel.ROSTER },
                 )
@@ -309,6 +310,7 @@ private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, onFoc
                 detail = panels.details[row.matchupId],
                 history = panels.histories[row.matchupId],
                 season = panels.player?.let { panels.seasons[it] },
+                player = panels.player,
                 onPlayer = { panels.openPlayer(row.matchupId, it) },
                 onBack = { panels.open = row.matchupId to Panel.ROSTER },
             )
