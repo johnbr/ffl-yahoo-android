@@ -84,12 +84,16 @@ fun MatchupRowView(
     onBack: () -> Unit = {},
 ) {
     val expandedBg = if (open != null) MaterialTheme.colorScheme.surfaceContainerHigh else Color.Transparent
+    // With a play or projection line under the names, the row keeps only a sliver above it, so
+    // the line reads as part of the matchup rather than the gap before the next one.
+    val vertical = if (single) 10.dp else 7.dp
+    val bottom = if (hasFoot(row)) 1.dp else vertical
     Column(Modifier.fillMaxWidth().background(expandedBg)) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .clickable { onToggle(Panel.ROSTER) }
-                .padding(horizontal = 16.dp, vertical = if (single) 10.dp else 7.dp)
+                .padding(start = 16.dp, end = 16.dp, top = vertical, bottom = bottom)
                 .semantics {
                     contentDescription = "${row.home.name} ${Present.points(row.home.points)}, ${row.away.name} ${Present.points(row.away.points)}"
                 },
@@ -163,12 +167,16 @@ private fun Score(points: Double?, leader: Boolean, final: Boolean) {
     )
 }
 
+private fun hasFoot(row: MatchupRow) = row.lastPlay != null ||
+    Present.trend(row.home.liveProjected, row.home.projected) != null ||
+    Present.trend(row.away.liveProjected, row.away.projected) != null
+
 @Composable
 private fun RowFoot(row: MatchupRow, playsOpen: Boolean, onPlay: () -> Unit) {
+    if (!hasFoot(row)) return
     val play = row.lastPlay
     val homeTrend = Present.trend(row.home.liveProjected, row.home.projected)
     val awayTrend = Present.trend(row.away.liveProjected, row.away.projected)
-    if (play == null && homeTrend == null && awayTrend == null) return
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 6.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.weight(1f)) { if (play != null && play.side != "away") RowPlay(play, playsOpen, TextAlign.Start, onPlay) }
         Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -183,7 +191,7 @@ private fun RowFoot(row: MatchupRow, playsOpen: Boolean, onPlay: () -> Unit) {
 
 @Composable
 private fun RowPlay(play: PlayRow, open: Boolean, align: TextAlign, onClick: () -> Unit) {
-    val color = if (play.correction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
+    val color = if (play.correction) MaterialTheme.colorScheme.error else LocalFfl.current.play
     val text = if (play.shortWho.isNotEmpty() && play.shortWhat.isNotEmpty()) "${play.shortWho} · ${play.shortWhat}" else play.shortText.ifEmpty { play.text }
     Text(
         text,
