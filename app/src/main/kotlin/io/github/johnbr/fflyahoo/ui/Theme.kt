@@ -23,6 +23,7 @@ import io.github.johnbr.fflyahoo.core.present.Present
 @Immutable
 data class FflColors(
     val winner: Color,
+    val play: Color,
     val up: Color,
     val down: Color,
     val flat: Color,
@@ -51,6 +52,7 @@ data class FflColors(
 
 private val LightFfl = FflColors(
     winner = Color(0xFFB8860B), // the card's #fbc02d reads poorly on white; a deeper gold keeps contrast
+    play = Color(0xFF0277BD), // a matchup's last scoring play; the card's --info-color, a shade deeper for white
     up = Color(0xFF2E7D32),
     down = Color(0xFFC62828),
     flat = Color(0xFF757575),
@@ -68,6 +70,7 @@ private val LightFfl = FflColors(
 
 private val DarkFfl = FflColors(
     winner = Color(0xFFFBC02D),
+    play = Color(0xFF4FC3F7),
     up = Color(0xFF66BB6A),
     down = Color(0xFFEF5350),
     flat = Color(0xFF9E9E9E),
