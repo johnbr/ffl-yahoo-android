@@ -271,15 +271,7 @@ private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, on
             }
         }
         if (live.isNotEmpty()) {
-            item(key = "live-heading") {
-                Text(
-                    "Live NFL games",
-                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 2.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-            }
+            item(key = "live-heading") { LiveHeading("Live NFL games") }
             nflGames(live, now, games)
         }
         footer()
@@ -300,6 +292,10 @@ private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, onFoc
         }
         onFocused()
     }
+    // With only one NFL game on, it fits under the league's matchups; more than that is the NFL tab's job.
+    val live = ui.nfl.games.filter { it.state in setOf("in", "delayed") }.takeIf { it.size == 1 }.orEmpty()
+    val now = rememberBannerClock(live, ui.updatedAt)
+    val games = rememberNflPanels(ui, engine)
     LazyColumn(Modifier.fillMaxSize(), state = list) {
         if (ui.scoreboard.partial) item { Muted("Some rosters could not be loaded.", Modifier.padding(horizontal = 16.dp)) }
         items(ui.scoreboard.matchups, key = { it.matchupId }) { row ->
@@ -316,8 +312,23 @@ private fun LeagueTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, onFoc
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
         }
+        if (live.isNotEmpty()) {
+            item(key = "live-heading") { LiveHeading("Live NFL game") }
+            nflGames(live, now, games)
+        }
         footer()
     }
+}
+
+@Composable
+private fun LiveHeading(text: String) {
+    Text(
+        text,
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 2.dp),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+    )
+    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 }
 
 @Composable
