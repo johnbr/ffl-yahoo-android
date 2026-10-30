@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.16.0...v0.17.0) (2026-10-30)
+
+
+### Features
+
+* blue last scoring play and tighter matchup rows ([#64](https://github.com/johnbr/ffl-yahoo-android/issues/64)) ([09c5ebd](https://github.com/johnbr/ffl-yahoo-android/commit/09c5ebd49f86749dd0f801eb212ce43d0fbdb492))
+
 ## [0.16.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.15.1...v0.16.0) (2026-10-30)
 
 
