@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.15.1...v0.16.0) (2026-10-30)
+
+
+### Features
+
+* show the lone live NFL game under the League tab's matchups ([#62](https://github.com/johnbr/ffl-yahoo-android/issues/62)) ([6c6fd7b](https://github.com/johnbr/ffl-yahoo-android/commit/6c6fd7b4fb5d8e4a8d22a76510190277de2de62a))
+
 ## [0.15.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.15.0...v0.15.1) (2026-10-29)
 
 
