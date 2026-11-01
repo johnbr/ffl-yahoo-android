@@ -120,7 +120,7 @@ fun MatchupRowView(
                     }
                     Panel.PLAYS -> {
                         PanelLink("‹ Lineup", Alignment.TopStart) { onToggle(Panel.ROSTER) }
-                        if (history == null) Loading("Loading plays…") else History(history)
+                        if (history == null) Loading("Loading plays…") else History(history, row.home.teamId)
                     }
                     Panel.PLAYER -> {
                         // An away player's season keeps to his side of the lineup, mirrored as his block is.
@@ -442,22 +442,35 @@ fun Badge(text: String, color: Color, filled: Boolean = false) {
     )
 }
 
-/** The matchup's scoring history: player, Yahoo's sentence, signed delta. */
+/**
+ * The matchup's scoring history: player, Yahoo's sentence, signed delta. The delta sits on the side of the
+ * team that scored it, as the row's play line does: a home (left) team's play puts its delta on the left
+ * and its description against the right edge; an away team's reads the other way round.
+ */
 @Composable
-fun History(plays: List<PlayRow>) {
+fun History(plays: List<PlayRow>, homeTeamId: String) {
     if (plays.isEmpty()) {
         Loading("No scoring plays recorded yet.")
         return
     }
     val ffl = LocalFfl.current
     for (p in plays) {
+        val home = p.teamKey.endsWith(".t.$homeTeamId")
+        val color = if (p.correction) MaterialTheme.colorScheme.error else ffl.up
         Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                Text(p.player, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                Text(p.text, fontSize = 12.sp, color = if (p.correction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant)
+            if (home) {
+                Text(Present.delta(p.delta), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
+                Spacer(Modifier.width(8.dp))
             }
-            Spacer(Modifier.width(8.dp))
-            Text(Present.delta(p.delta), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = if (p.correction) MaterialTheme.colorScheme.error else ffl.up)
+            Column(Modifier.weight(1f), horizontalAlignment = if (home) Alignment.End else Alignment.Start) {
+                val align = if (home) TextAlign.End else TextAlign.Start
+                Text(p.player, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = align)
+                Text(p.text, fontSize = 12.sp, color = if (p.correction) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, textAlign = align)
+            }
+            if (!home) {
+                Spacer(Modifier.width(8.dp))
+                Text(Present.delta(p.delta), fontSize = 13.sp, fontWeight = FontWeight.Bold, color = color)
+            }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
     }
