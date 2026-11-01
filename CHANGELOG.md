@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.18.0...v0.19.0) (2026-11-01)
+
+
+### Features
+
+* a tighter lineup on a phone held upright ([#70](https://github.com/johnbr/ffl-yahoo-android/issues/70)) ([262fa29](https://github.com/johnbr/ffl-yahoo-android/commit/262fa291ee051ad0e7886b26e32b525dabdb5ea7))
+
 ## [0.18.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.17.1...v0.18.0) (2026-11-01)
 
 
