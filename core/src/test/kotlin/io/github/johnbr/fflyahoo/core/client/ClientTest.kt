@@ -4,6 +4,7 @@ import io.github.johnbr.fflyahoo.core.FetchFailed
 import io.github.johnbr.fflyahoo.core.Golden
 import io.github.johnbr.fflyahoo.core.LeagueData
 import io.github.johnbr.fflyahoo.core.STALE_AFTER_SECONDS
+import io.github.johnbr.fflyahoo.core.YahooRefused
 import io.github.johnbr.fflyahoo.core.seed.Seed
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -440,5 +441,106 @@ class ClientTest {
         assertEquals(1, fetch.log.count { it.endsWith("/stats.txt") })
         second.refresh(100.0 + LIVE_SHARE_SECONDS)
         assertEquals(2, fetch.log.count { it.endsWith("/stats.txt") })
+    }
+
+    // -- the relay refusing the host (HTTP 999) ------------------------------------------------------
+
+    /** The fetcher of a host the relay has throttled while [refusing]. */
+    private class Refusing(bodies: Map<String, String>) : Fetcher {
+        val inner = FakeFetch(bodies)
+        var refusing = false
+        val relayAsks get() = inner.log.count { "relay-stream" in it }
+        override suspend fun fetch(url: String): String {
+            if (refusing && "relay-stream" in url) {
+                inner.log += url
+                throw YahooRefused(999)
+            }
+            return inner.fetch(url)
+        }
+    }
+
+    @Test
+    fun `a refusing relay is left alone until its retry`() = runBlocking {
+        val fetch = Refusing(bodies())
+        val src = source(fetch)
+        val good = scores(src.refresh(100.0))
+        fetch.refusing = true
+        src.refreshOrStale(110.0)
+        assertEquals(110.0, src.relay.gate.since)
+        assertEquals(110.0 + REFUSED_BACKOFF_SECONDS[0], src.relay.gate.retryAt)
+        val asked = fetch.relayAsks
+        var t = 120.0
+        while (t < src.relay.gate.retryAt) {
+            assertEquals(good, scores(src.refreshOrStale(t)), "the scores are held, not zeroed")
+            t += 10.0
+        }
+        assertEquals(asked, fetch.relayAsks, "nothing is sent to the relay while it refuses us")
+    }
+
+    @Test
+    fun `each refusal in a row waits longer`() = runBlocking {
+        val fetch = Refusing(bodies()).apply { refusing = true }
+        val relay = RelayClient(fetch)
+        relay.gate.refuse(0.0)
+        val waits = ArrayList<Double>()
+        repeat(REFUSED_BACKOFF_SECONDS.size + 1) {
+            val now = relay.gate.retryAt
+            relay.players(now, listOf("1"))
+            waits += relay.gate.retryAt - now
+        }
+        assertEquals(REFUSED_BACKOFF_SECONDS.drop(1) + REFUSED_BACKOFF_SECONDS.last() + REFUSED_BACKOFF_SECONDS.last(), waits)
+        assertEquals(0.0, relay.gate.since, "still the same run of refusals")
+    }
+
+    @Test
+    fun `an answer opens the relay again`() = runBlocking {
+        val fetch = Refusing(bodies())
+        val src = source(fetch)
+        src.relay.gate.refuse(0.0)
+        val data = src.refresh(src.relay.gate.retryAt)
+        assertTrue(scores(data).values.any { it != 0.0 })
+        assertFalse(src.relay.gate.refused)
+        assertTrue(src.relay.gate.open(0.0))
+    }
+
+    @Test
+    fun `held scores outlast the stale limit while refused`() = runBlocking {
+        val fetch = Refusing(bodies())
+        val src = source(fetch)
+        val good = scores(src.refresh(100.0))
+        fetch.refusing = true
+        assertEquals(good, scores(src.refreshOrStale(100.0 + STALE_AFTER_SECONDS + 600)))
+        assertTrue(src.relay.gate.refused)
+    }
+
+    @Test
+    fun `a refused play feed serves what it had and closes the relay`() = runBlocking {
+        val fake = FakeRelay(playsV1)
+        val client = relay(fake)
+        assertEquals(playsV1, client.plays("2", 100.0))
+        val refusing = object : ConditionalFetcher {
+            val asks = ArrayList<String?>()
+            override suspend fun fetch(url: String, since: String?): Pair<String?, String> {
+                asks += since
+                throw YahooRefused(999)
+            }
+        }
+        val blocked = RelayClient(FakeFetch(bodies()), refusing)
+        assertEquals("", blocked.plays("2", 100.0))
+        assertTrue(blocked.gate.refused)
+        assertEquals("", blocked.plays("7", 110.0))
+        assertEquals(1, refusing.asks.size, "no play feed is asked for while the relay refuses")
+    }
+
+    @Test
+    fun `a play feed not due is the copy in hand`() = runBlocking {
+        val fake = FakeRelay(playsV1)
+        val client = relay(fake)
+        client.plays("2", 100.0)
+        fake.body = playsV2
+        fake.modified = "Thu, 17 Sep 2026 02:15:00 GMT"
+        assertEquals(playsV1, client.plays("2", 110.0, fresh = false))
+        assertEquals(1, fake.asks.size)
+        assertEquals(playsV2, client.plays("2", 120.0))
     }
 }

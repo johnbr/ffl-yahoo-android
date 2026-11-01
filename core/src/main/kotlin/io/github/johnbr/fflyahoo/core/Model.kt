@@ -89,6 +89,12 @@ data class LeagueData(
 /** This client's failures. */
 open class YahooError(message: String, cause: Throwable? = null) : Exception(message, cause)
 
+/**
+ * Yahoo is turning this host away: HTTP 999 ("Request denied") or 429. Not a transient failure to retry on
+ * the next poll — the host has been asking too often, and the answer is to stop for a while ([RelayGate]).
+ */
+class YahooRefused(val status: Int) : YahooError("Yahoo is refusing requests from this host (HTTP $status).")
+
 /** A transient problem — network, timeout, or an unexpected payload. */
 class FetchFailed(message: String, cause: Throwable? = null) : YahooError(message, cause)
 

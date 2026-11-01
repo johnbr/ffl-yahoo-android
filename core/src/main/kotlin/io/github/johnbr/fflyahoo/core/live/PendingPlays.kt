@@ -26,6 +26,16 @@ object Pending {
     /** How long the play feed is re-checked for a pending play's text. */
     const val CHASE_FOR_SECONDS = 60.0
 
+    /**
+     * How long a live game's play feed goes unasked while the game stands still. A play moves the game's
+     * down, distance, spot, possession or score, and that movement is what earns the game a play-feed
+     * request that poll; the pending play then keeps it asked for, and the chase follows it between polls,
+     * until the text lands. A game that has not moved is asked this often anyway, for the plays that move
+     * none of those and for Yahoo's in-place rewording. Asking every live game every poll was eight
+     * requests per 10 s poll for eight games mostly standing still.
+     */
+    const val PLAYS_QUIET_SECONDS = 30.0
+
     private fun int(value: String?): Int = (if (value.isNullOrEmpty()) 0 else Py.intOrNull(value)) ?: 0
 
     fun snapOf(game: GameState) = Snap(
@@ -287,4 +297,30 @@ class PendingPlays {
     /** Games whose play feed is worth re-reading before the next poll. */
     fun awaiting(now: Double): List<String> =
         games.filter { (_, s) -> s.text.isNotEmpty() && now - s.since < Pending.CHASE_FOR_SECONDS }.keys.toList()
+}
+
+/**
+ * Which live games' play feeds a poll asks for: one that moved since its feed was last asked, one whose
+ * play text is still awaited, and one left unasked for [Pending.PLAYS_QUIET_SECONDS]. Port of
+ * `pending_plays.PlaysSchedule`.
+ */
+class PlaysSchedule {
+    /** `{playsId: (the game's snap and period, when)}` as of the poll that last asked for its feed. */
+    private val asked = HashMap<String, Pair<Pair<Snap, String>, Double>>()
+
+    /** [games] is `{playsId: games-feed row}` for the live games. */
+    fun due(games: Map<String, GameState>, awaited: Collection<String>, now: Double): Set<String> {
+        val waiting = awaited.toSet()
+        val due = LinkedHashSet<String>()
+        for ((playsId, game) in games) {
+            val mark = Pending.snapOf(game) to game.period
+            val last = asked[playsId]
+            if (last == null || last.first != mark || playsId in waiting || now - last.second >= Pending.PLAYS_QUIET_SECONDS) {
+                due += playsId
+                asked[playsId] = mark to now
+            }
+        }
+        asked.keys.retainAll(games.keys)
+        return due
+    }
 }

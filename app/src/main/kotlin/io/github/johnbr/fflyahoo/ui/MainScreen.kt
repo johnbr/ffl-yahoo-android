@@ -62,6 +62,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 enum class Tab(val label: String) { MINE("My Matchup"), LEAGUE("League"), NFL("NFL") }
 
@@ -96,6 +98,7 @@ fun MainScreen(settings: AppSettings, ui: LeagueUi?, engine: LeagueEngine?, vm: 
                 tabs.forEach { t -> Tab(selected = t == tab, onClick = { tab = t }, text = { Text(t.label) }) }
             }
             ui?.error?.let { ErrorStrip(it, ui.updatedAt) }
+            ui?.liveRefused?.let { (since, retryAt) -> RefusedStrip(since, retryAt) }
             var refreshing by remember { mutableStateOf(false) }
             val scope = rememberCoroutineScope()
             PullToRefreshBox(
@@ -172,6 +175,22 @@ private fun ErrorStrip(message: String, updatedAt: Double?) {
     val age = updatedAt?.let { ((System.currentTimeMillis() / 1000.0 - it) / 60).toInt() }
     Text(
         if (age != null) "Can't reach Yahoo — showing data from $age min ago." else "Can't reach Yahoo: $message",
+        Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 6.dp),
+        color = MaterialTheme.colorScheme.onErrorContainer,
+        fontSize = 12.sp,
+    )
+}
+
+/**
+ * Yahoo's live relay turning this host away (HTTP 999). The app stops asking until the retry time and
+ * holds the scores where they were, so the screen says so rather than looking live and frozen.
+ */
+@Composable
+private fun RefusedStrip(since: Double, retryAt: Double) {
+    val format = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+    fun at(seconds: Double) = Instant.ofEpochSecond(seconds.toLong()).atZone(ZoneId.systemDefault()).format(format)
+    Text(
+        "Yahoo is refusing live updates. Scores as of ${at(since)}; trying again at ${at(retryAt)}.",
         Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.errorContainer).padding(horizontal = 16.dp, vertical = 6.dp),
         color = MaterialTheme.colorScheme.onErrorContainer,
         fontSize = 12.sp,

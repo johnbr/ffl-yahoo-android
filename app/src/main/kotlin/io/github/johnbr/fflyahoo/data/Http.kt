@@ -1,5 +1,6 @@
 package io.github.johnbr.fflyahoo.data
 
+import io.github.johnbr.fflyahoo.core.YahooRefused
 import io.github.johnbr.fflyahoo.core.client.ConditionalFetcher
 import io.github.johnbr.fflyahoo.core.client.Fetcher
 import io.github.johnbr.fflyahoo.core.client.HeaderFetcher
@@ -31,6 +32,7 @@ class OkHttpFetcher(
     override suspend fun fetch(url: String): String {
         val request = Request.Builder().url(url).header("User-Agent", USER_AGENT).build()
         return client.newCall(request).await().use { response ->
+            refuse(response)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} from $url")
             withContext(Dispatchers.IO) { response.body.string() }
         }
@@ -40,6 +42,7 @@ class OkHttpFetcher(
         val builder = Request.Builder().url(url).header("User-Agent", USER_AGENT)
         for ((name, value) in headers) builder.header(name, value)
         return client.newCall(builder.build()).await().use { response ->
+            refuse(response)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} from $url")
             withContext(Dispatchers.IO) { response.body.string() }
         }
@@ -50,10 +53,16 @@ class OkHttpFetcher(
         if (since != null) builder.header("If-Modified-Since", since)
         return client.newCall(builder.build()).await().use { response ->
             if (response.code == 304) return@use null to (since ?: "")
+            refuse(response)
             if (!response.isSuccessful) throw IOException("HTTP ${response.code} from $url")
             withContext(Dispatchers.IO) { response.body.string() } to (response.header("Last-Modified") ?: "")
         }
     }
+}
+
+/** 999 is Yahoo's own "Request denied", served to a host it has throttled. */
+private fun refuse(response: Response) {
+    if (response.code == 999 || response.code == 429) throw YahooRefused(response.code)
 }
 
 private suspend fun Call.await(): Response = suspendCancellableCoroutine { continuation ->

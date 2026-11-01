@@ -329,4 +329,45 @@ class PendingPlaysTest {
         assertFalse(Pending.periodEndNotReached(endOfHalf, gameRow(period = "", clock = "")))
         assertFalse(Pending.periodEndNotReached(endOfHalf, gameRow(period = "2", clock = "Halftime")))
     }
+
+    // -- which play feeds a poll asks for ------------------------------------------------------------
+
+    @Test
+    fun `every live game is asked for on first sight`() =
+        assertEquals(setOf("8", "9"), PlaysSchedule().due(mapOf("8" to gameRow(), "9" to gameRow()), emptyList(), 100.0))
+
+    @Test
+    fun `a game standing still is not asked again until it has been quiet a while`() {
+        val schedule = PlaysSchedule()
+        schedule.due(mapOf("8" to gameRow()), emptyList(), 100.0)
+        assertEquals(emptySet<String>(), schedule.due(mapOf("8" to gameRow(clock = "14:10")), emptyList(), 110.0), "a ticking clock is not a play")
+        assertEquals(emptySet<String>(), schedule.due(mapOf("8" to gameRow()), emptyList(), 100.0 + Pending.PLAYS_QUIET_SECONDS - 1))
+        assertEquals(setOf("8"), schedule.due(mapOf("8" to gameRow()), emptyList(), 100.0 + Pending.PLAYS_QUIET_SECONDS))
+    }
+
+    @Test
+    fun `a game that moved is asked for that poll`() {
+        val schedule = PlaysSchedule()
+        schedule.due(mapOf("8" to gameRow()), emptyList(), 100.0)
+        val moved = gameRow(down = 2, distance = 3, toGoal = 68)
+        assertEquals(setOf("8"), schedule.due(mapOf("8" to moved), emptyList(), 110.0))
+        assertEquals(emptySet<String>(), schedule.due(mapOf("8" to moved), emptyList(), 120.0))
+        assertEquals(setOf("8"), schedule.due(mapOf("8" to gameRow(down = 2, distance = 3, toGoal = 68, away = 3)), emptyList(), 130.0))
+    }
+
+    @Test
+    fun `a game whose text is awaited is asked every poll`() {
+        val schedule = PlaysSchedule()
+        schedule.due(mapOf("8" to gameRow()), emptyList(), 100.0)
+        assertEquals(setOf("8"), schedule.due(mapOf("8" to gameRow()), listOf("8"), 110.0))
+        assertEquals(setOf("8"), schedule.due(mapOf("8" to gameRow()), listOf("8"), 120.0))
+    }
+
+    @Test
+    fun `a game that ends is forgotten`() {
+        val schedule = PlaysSchedule()
+        schedule.due(mapOf("8" to gameRow()), emptyList(), 100.0)
+        schedule.due(emptyMap(), emptyList(), 110.0)
+        assertEquals(setOf("8"), schedule.due(mapOf("8" to gameRow()), emptyList(), 120.0), "a game back in the list is new again")
+    }
 }
