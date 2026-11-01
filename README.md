@@ -19,8 +19,8 @@ leagues work too.
   its current points and its live projection. The projection is coloured against the morning's number.
 - **Per-matchup scoring plays.** Under each matchup is the play that last moved *that* score,
   aligned to the side that scored it. Bench points never count. Tap the line for the matchup's full
-  scoring history (each play's points on the side that scored them), or tap the matchup for both lineups and a win probability. Once no starter is
-  playing the line is gone, and "Scoring plays ›" in the lineup opens the history instead.
+  scoring history (each play's points on the side that scored them), or tap the matchup for both lineups and a win probability. Once a matchup is
+  open, tapping anywhere between the team names and the lineup opens the history too.
 - **A player's season.** Tap a player (or a defence) in a lineup for his season, week by week: the
   opponent or bye, Yahoo's projection, and the points he scored, with the weeks still to come projected
   against their opponents. "‹ Lineup" goes back.
