@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.21.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.20.0...v0.21.0) (2026-11-01)
+
+
+### Features
+
+* show an NFL game's last play in blue ([#74](https://github.com/johnbr/ffl-yahoo-android/issues/74)) ([e068950](https://github.com/johnbr/ffl-yahoo-android/commit/e068950228541175c045eadc1870c174d78c451d))
+
 ## [0.20.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.19.0...v0.20.0) (2026-11-01)
 
 
