@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.20.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.19.0...v0.20.0) (2026-11-01)
+
+
+### Features
+
+* open a matchup's scoring plays from anywhere above its lineup ([#72](https://github.com/johnbr/ffl-yahoo-android/issues/72)) ([1ef002f](https://github.com/johnbr/ffl-yahoo-android/commit/1ef002f23b551eee880286ab83015bdce577bf4f))
+
 ## [0.19.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.18.0...v0.19.0) (2026-11-01)
 
 
