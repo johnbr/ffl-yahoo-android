@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.22.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.21.0...v0.22.0) (2026-11-01)
+
+
+### Features
+
+* show the widgets' last play in blue ([#76](https://github.com/johnbr/ffl-yahoo-android/issues/76)) ([bde511f](https://github.com/johnbr/ffl-yahoo-android/commit/bde511f0c4218ba7095dd7fab92b06b4b1ba8021))
+
 ## [0.21.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.20.0...v0.21.0) (2026-11-01)
 
 
