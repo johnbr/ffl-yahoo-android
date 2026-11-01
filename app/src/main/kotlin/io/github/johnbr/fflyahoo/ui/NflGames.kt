@@ -98,7 +98,8 @@ fun NflGameView(
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Medium,
                     fontStyle = if (game.lastPlayProvisional) FontStyle.Italic else FontStyle.Normal,
-                    color = if (game.lastPlayProvisional) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                    // Blue like a matchup's last play; faded while the feed has not confirmed it.
+                    color = LocalFfl.current.play.let { if (game.lastPlayProvisional) it.copy(alpha = 0.7f) else it },
                 )
             }
         }
