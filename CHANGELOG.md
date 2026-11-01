@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.17.0...v0.17.1) (2026-11-01)
+
+
+### Bug Fixes
+
+* back off when Yahoo's relay refuses the device, and say so ([#66](https://github.com/johnbr/ffl-yahoo-android/issues/66)) ([4ec19f4](https://github.com/johnbr/ffl-yahoo-android/commit/4ec19f4e2df1b59d18ad00b53d9ba291f7079f8b))
+
 ## [0.17.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.16.0...v0.17.0) (2026-10-30)
 
 
