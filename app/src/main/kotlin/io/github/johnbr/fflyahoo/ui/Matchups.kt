@@ -108,15 +108,17 @@ fun MatchupRowView(
             }
             TeamName(row.away, row.leader == row.away.teamId, TextAlign.End, Modifier.weight(1f))
         }
-        RowFoot(row, open == Panel.PLAYS, onPlay = { onToggle(Panel.PLAYS) })
+        RowFoot(row, open == Panel.PLAYS, expanded = open != null, onPlay = { onToggle(Panel.PLAYS) })
         AnimatedVisibility(open != null) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).padding(bottom = 10.dp)) {
                 when (open) {
                     Panel.ROSTER -> {
-                        // The play line is the usual way in, but it is gone once no starter is playing.
-                        PanelLink("Scoring plays ›", Alignment.TopEnd) { onToggle(Panel.PLAYS) }
-                        Projections(row)
-                        WinBar(row)
+                        // Everything between the team names and the lineup opens the scoring plays: the play
+                        // line is the usual way in, but it is gone once no starter is playing.
+                        Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Scoring plays") { onToggle(Panel.PLAYS) }) {
+                            Projections(row)
+                            WinBar(row)
+                        }
                         if (detail == null) Loading("Loading rosters…") else Rosters(detail, onPlayer)
                     }
                     Panel.PLAYS -> {
@@ -173,13 +175,15 @@ private fun hasFoot(row: MatchupRow) = row.lastPlay != null ||
     Present.trend(row.home.liveProjected, row.home.projected) != null ||
     Present.trend(row.away.liveProjected, row.away.projected) != null
 
+/** The play line and live projections under the names. On an opened matchup the whole line opens its plays. */
 @Composable
-private fun RowFoot(row: MatchupRow, playsOpen: Boolean, onPlay: () -> Unit) {
+private fun RowFoot(row: MatchupRow, playsOpen: Boolean, expanded: Boolean, onPlay: () -> Unit) {
     if (!hasFoot(row)) return
     val play = row.lastPlay
     val homeTrend = Present.trend(row.home.liveProjected, row.home.projected)
     val awayTrend = Present.trend(row.away.liveProjected, row.away.projected)
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 6.dp), verticalAlignment = Alignment.Top) {
+    val target = if (expanded) Modifier.clickable(onClickLabel = "Scoring plays", onClick = onPlay) else Modifier
+    Row(Modifier.fillMaxWidth().then(target).padding(horizontal = 16.dp).padding(bottom = 6.dp), verticalAlignment = Alignment.Top) {
         Box(Modifier.weight(1f)) { if (play != null && play.side != "away") RowPlay(play, playsOpen, TextAlign.Start, onPlay) }
         Row(Modifier.padding(horizontal = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (homeTrend != null) Text(Present.points(row.home.liveProjected), fontSize = 12.sp, color = trendColor(homeTrend))
@@ -228,7 +232,7 @@ private fun Loading(text: String) {
     Text(text, Modifier.padding(8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
 }
 
-/** "orig X" plus a coloured "proj Y" when the live projection has moved; otherwise just "proj X". */
+/** Each side's morning projection: "orig X" once the live one (in the row's foot) has moved, else "proj X". */
 @Composable
 private fun Projections(row: MatchupRow) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
@@ -240,11 +244,9 @@ private fun Projections(row: MatchupRow) {
 @Composable
 private fun ProjectionSide(team: TeamRow, align: Alignment.Horizontal, modifier: Modifier) {
     val live = Present.hasLive(team.liveProjected, team.projected)
+    // Only the morning's number: the live projection already sits under the names, in the row's foot.
     Column(modifier, horizontalAlignment = align) {
         Text("${if (live) "orig" else "proj"} ${Present.points(team.projected)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (live) {
-            Text("proj ${Present.points(team.liveProjected)}", fontSize = 12.sp, color = trendColor(Present.trend(team.liveProjected, team.projected)))
-        }
     }
 }
 
