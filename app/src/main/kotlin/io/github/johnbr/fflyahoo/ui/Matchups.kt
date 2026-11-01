@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.SpanStyle
@@ -127,7 +128,8 @@ fun MatchupRowView(
                         val awaySide = detail?.sides?.getOrNull(1)
                         val away = player != null && awaySide != null &&
                             (awaySide.starters + awaySide.bench).any { it.playerId == player }
-                        SeasonView(season, onBack, away)
+                        val week = detail?.sides?.flatMap { it.starters + it.bench }?.firstOrNull { it.playerId == player }
+                        SeasonView(season, onBack, away, week)
                     }
                     null -> {}
                 }
@@ -308,13 +310,21 @@ private fun Lineup(home: List<PlayerRow>, away: List<PlayerRow>, onPlayer: (Stri
     }
 }
 
+/**
+ * A phone held upright: under 600dp wide, Material's "compact" width. The lineup is two players side
+ * by side there, ~120dp of name each, so it sheds what can live elsewhere — the stat line moves to the
+ * player's own view, and the names and slot chip shrink a little so most names hold one line.
+ */
+@Composable
+private fun compactWidth(): Boolean = LocalConfiguration.current.screenWidthDp < 600
+
 @Composable
 private fun SlotChip(slot: String) {
     val kind = Present.slot(slot)
     val color = LocalFfl.current.slot(kind, MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.onSurfaceVariant)
     Text(
         slot,
-        Modifier.widthIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 3.dp),
+        Modifier.widthIn(min = if (compactWidth()) 34.dp else 40.dp).padding(horizontal = if (compactWidth()) 2.dp else 4.dp, vertical = 3.dp),
         textAlign = TextAlign.Center,
         fontSize = 11.sp,
         fontWeight = FontWeight.Bold,
@@ -322,7 +332,10 @@ private fun SlotChip(slot: String) {
     )
 }
 
-/** A player: name (club) + badges, game line, stat line; points over projection toward the slot chip. */
+/**
+ * A player: name (club) + badges, game line, stat line; points over projection toward the slot chip. On
+ * a phone held upright the stat line is left to the player's own view ([SeasonView]), a tap away.
+ */
 @Composable
 private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: ZoneId, modifier: Modifier, onPlayer: (String) -> Unit) {
     if (player == null) {
@@ -361,7 +374,7 @@ private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: Z
                 if (game.isNotEmpty()) {
                     Text(game, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = textAlign)
                 }
-                if (player.statLine.isNotEmpty()) {
+                if (player.statLine.isNotEmpty() && !compactWidth()) {
                     Text(player.statLine, fontSize = 11.sp, fontStyle = FontStyle.Italic, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = textAlign)
                 }
             }
@@ -421,7 +434,8 @@ private fun PlayerName(player: PlayerRow, textAlign: TextAlign) {
             }
         }
     }
-    Text(text, inlineContent = inline, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = textAlign)
+    // A size down on a phone held upright, where at 13sp a name like "D. Samuel Sr. (SF) Q" took two lines.
+    Text(text, inlineContent = inline, fontSize = if (compactWidth()) 12.sp else 13.sp, fontWeight = FontWeight.SemiBold, textAlign = textAlign)
 }
 
 private data class InlineBadge(val id: String, val text: String, val color: Color, val filled: Boolean)
@@ -488,7 +502,7 @@ fun History(plays: List<PlayRow>, homeTeamId: String) {
  * this week's are still running, so they stay uncoloured.
  */
 @Composable
-fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit, away: Boolean = false) {
+fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit, away: Boolean = false, week: PlayerRow? = null) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     // The way back and the name sit on the side of the lineup the player was opened from: an away
     // player's are mirrored to the right, the link on the outside edge, as his block is.
@@ -535,6 +549,16 @@ fun SeasonView(season: Result<History.PlayerSeason>?, onBack: () -> Unit, away: 
         textAlign = if (away) TextAlign.End else TextAlign.Start,
         modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
     )
+    // This week's stat line, which a phone's lineup leaves out to save the room: what he has done so far.
+    if (week != null && week.statLine.isNotEmpty()) {
+        Text(
+            "This week: ${week.statLine}",
+            fontSize = 12.sp,
+            fontStyle = FontStyle.Italic,
+            textAlign = if (away) TextAlign.End else TextAlign.Start,
+            modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        )
+    }
     SeasonLine("Wk", "Opp", "Proj", "Pts", header = true)
     for (row in s.rows) {
         if (row.status == "bye") {
