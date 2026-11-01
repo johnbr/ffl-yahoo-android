@@ -92,8 +92,14 @@ runs on:
 - `relay-stream.sports.yahoo.com/nfl/{stats,games}.txt` is the live tier. It is polled every 10 s
   while a rostered player's game is on, every 5 minutes near games and every 30 minutes otherwise.
   Leagues share these fetches.
-- `relay-stream.sports.yahoo.com/nfl/plays-<id>.txt` gives play-by-play for live games. It is fetched
-  with `If-Modified-Since`, so an unchanged feed costs a `304`.
+- `relay-stream.sports.yahoo.com/nfl/plays-<id>.txt` gives play-by-play for live games. A game's feed
+  is fetched when the game has moved, while a play's text is due, or every 30 seconds, always with
+  `If-Modified-Since`, so an unchanged feed costs a `304`.
+
+**When Yahoo refuses, the app stops asking.** The relay answers a device it has throttled with HTTP
+999 ("Request denied"). The app then sends it nothing for 2 minutes, then 5, 15 and 30 on each further
+refusal, and resumes as soon as a retry is answered. Meanwhile the scores stay as they were, and a strip
+under the tabs says so, with the time they date from and the next retry.
 
 A player's season also reads the same league seed with `&week=N` for each week's projections (a
 finished week's are kept, so they are fetched once), and ESPN's public fantasy API

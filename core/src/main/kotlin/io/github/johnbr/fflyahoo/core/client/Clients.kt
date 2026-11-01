@@ -4,6 +4,7 @@ import io.github.johnbr.fflyahoo.core.FetchFailed
 import io.github.johnbr.fflyahoo.core.LeagueData
 import io.github.johnbr.fflyahoo.core.STALE_AFTER_SECONDS
 import io.github.johnbr.fflyahoo.core.YahooError
+import io.github.johnbr.fflyahoo.core.YahooRefused
 import io.github.johnbr.fflyahoo.core.relay.Relay
 import io.github.johnbr.fflyahoo.core.seed.Seed
 import kotlinx.coroutines.CancellationException
@@ -34,6 +35,15 @@ const val MIN_BODY = 40
 
 /** How long a live feed's last good copy stands in after a dropped fetch: stats 15 min, games 2. */
 val FEED_HOLD_SECONDS = mapOf("stats" to STALE_AFTER_SECONDS, "games" to 120.0)
+
+/**
+ * How long the relay is left alone after it turns this host away, by refusals in a row. HTTP 999 is Yahoo
+ * throttling the host: on 2026-11-01 the relay refused every feed mid-slate while the integration kept
+ * asking every 10 s, which can only have kept the block in place. So a refusal stops all relay traffic
+ * until its retry time; one request then asks again, and only an answer opens the relay back up. The
+ * league seed is a different service and is unaffected.
+ */
+val REFUSED_BACKOFF_SECONDS = listOf(120.0, 300.0, 900.0, 1800.0)
 
 /** How long the 180 KB league seed is reused between refreshes. */
 const val SEED_TTL_SECONDS = 180.0
@@ -88,6 +98,40 @@ internal suspend fun get(fetch: Fetcher, url: String): String {
 }
 
 /**
+ * Whether the relay may be asked right now, after it refused this host. One per [RelayClient], shared by
+ * every feed and every league: Yahoo refuses the host, not a feed. Port of `redzone_client.RelayGate`.
+ */
+class RelayGate {
+    /** When the current run of refusals began; null while the relay answers. */
+    @Volatile var since: Double? = null
+        private set
+
+    @Volatile var retryAt = 0.0
+        private set
+    private var strikes = 0
+
+    val refused: Boolean get() = since != null
+
+    fun open(now: Double) = now >= retryAt
+
+    /** Record a refusal and close the relay until the next retry. */
+    @Synchronized
+    fun refuse(now: Double) {
+        if (now < retryAt) return // a sibling request of the same round already counted it
+        if (since == null) since = now
+        retryAt = now + REFUSED_BACKOFF_SECONDS[minOf(strikes, REFUSED_BACKOFF_SECONDS.lastIndex)]
+        strikes++
+    }
+
+    @Synchronized
+    fun answered() {
+        since = null
+        retryAt = 0.0
+        strikes = 0
+    }
+}
+
+/**
  * Yahoo's live relay feeds — the same for every league, so one instance serves them all. Port of the
  * relay half of `redzone_client.RedzoneClient`. [now] is always supplied by the caller: nothing here
  * reads a clock, which keeps it deterministic under test.
@@ -110,8 +154,19 @@ class RelayClient(
     private val playsLock = Mutex()
     private val plays = HashMap<String, PlaysCache>()
 
-    /** A live feed that may legitimately be missing (between seasons, before the week's first game). */
-    private suspend fun getOptional(url: String): String = attempt { get(fetch, url) }.getOrDefault("")
+    val gate = RelayGate()
+
+    /**
+     * A live feed that may legitimately be missing (between seasons, before the week's first game), through
+     * [gate]: while the relay refuses the host nothing is sent, and the caller sees `""` — a failed fetch,
+     * which it holds its last copy over.
+     */
+    private suspend fun getRelay(url: String, now: Double): String {
+        if (!gate.open(now)) return ""
+        val result = attempt { get(fetch, url) }
+        result.exceptionOrNull()?.let { if (it is YahooRefused) gate.refuse(now) }
+        return result.getOrNull()?.also { gate.answered() } ?: ""
+    }
 
     /**
      * One live feed, holding its last good copy over a failed fetch. A feed Yahoo serves empty still
@@ -134,8 +189,8 @@ class RelayClient(
         shared?.let { (at, result) -> if (now - at in 0.0..<LIVE_SHARE_SECONDS) return@withLock result.getOrThrow() }
         val result = attempt {
             val (stats, games) = coroutineScope {
-                val stats = async { getOptional(Relay.relayUrl("stats", sport)) }
-                val games = async { getOptional(Relay.relayUrl("games", sport)) }
+                val stats = async { getRelay(Relay.relayUrl("stats", sport), now) }
+                val games = async { getRelay(Relay.relayUrl("games", sport), now) }
                 stats.await() to games.await()
             }
             liveFeed("stats", stats, now) to liveFeed("games", games, now)
@@ -156,7 +211,7 @@ class RelayClient(
             val lacking = needed.any { it !in cached }
             if (age < PLAYERS_TTL_SECONDS && !(lacking && age >= PLAYERS_RETRY_SECONDS)) return@withLock cached
         }
-        val body = getOptional(Relay.relayUrl("players", sport))
+        val body = getRelay(Relay.relayUrl("players", sport), now)
         if (body.isEmpty()) return@withLock cached ?: emptyMap()
         Relay.parsePlayers(body).also {
             players = it
@@ -167,17 +222,25 @@ class RelayClient(
     /**
      * One game's play-by-play feed, or `""`. Served from cache only when the server says `304`, or when
      * asked twice inside [PLAYS_MIN_INTERVAL_SECONDS]; forced whole every [PLAYS_RECHECK_SECONDS].
+     *
+     * [fresh] `false` takes the copy in hand when there is one: the caller has decided nothing in this game
+     * moved (`PlaysSchedule`). While the relay refuses the host every caller gets the copy in hand.
      */
-    suspend fun plays(playsId: String, now: Double): String {
+    suspend fun plays(playsId: String, now: Double, fresh: Boolean = true): String {
         if (playsId.isEmpty()) return ""
         val url = Relay.relayUrl("plays-$playsId", sport)
-        val conditional = fetchIfModified ?: return getOptional(url)
+        val conditional = fetchIfModified ?: return getRelay(url, now)
 
         val cached = playsLock.withLock { plays[playsId] }
-        if (cached != null && now - cached.fetchedAt < PLAYS_MIN_INTERVAL_SECONDS) return cached.body
+        if (cached != null && (!fresh || now - cached.fetchedAt < PLAYS_MIN_INTERVAL_SECONDS)) return cached.body
+        if (!gate.open(now)) return cached?.body ?: ""
 
         val since = if (cached != null && now - cached.loadedAt < PLAYS_RECHECK_SECONDS) cached.lastModified.ifEmpty { null } else null
-        val (body, lastModified) = attempt { conditional.fetch(url, since) }.getOrElse { return cached?.body ?: "" }
+        val (body, lastModified) = attempt { conditional.fetch(url, since) }.getOrElse {
+            if (it is YahooRefused) gate.refuse(now)
+            return cached?.body ?: ""
+        }
+        gate.answered()
         return playsLock.withLock {
             when {
                 body == null -> {
@@ -277,14 +340,18 @@ class LeagueSource(
         return data
     }
 
-    /** Refresh, falling back to the last good payload on a transient failure — up to [STALE_AFTER_SECONDS]. */
+    /**
+     * Refresh, falling back to the last good payload on a transient failure — up to [STALE_AFTER_SECONDS],
+     * unless the relay is refusing the host, which can last hours. Then the last good scores stay up, and
+     * [RelayGate.since] says how old they are.
+     */
     suspend fun refreshOrStale(now: Double): LeagueData =
         try {
             refresh(now)
         } catch (e: YahooError) {
             val stale = lastGood ?: throw e
             val age = now - stale.fetchedAt
-            if (age > STALE_AFTER_SECONDS) throw FetchFailed("no fresh data for ${age.toLong()}s: ${e.message}", e)
+            if (age > STALE_AFTER_SECONDS && !relay.gate.refused) throw FetchFailed("no fresh data for ${age.toLong()}s: ${e.message}", e)
             stale
         }
 }

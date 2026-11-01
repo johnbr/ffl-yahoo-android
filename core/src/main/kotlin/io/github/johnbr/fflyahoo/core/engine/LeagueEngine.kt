@@ -11,6 +11,7 @@ import io.github.johnbr.fflyahoo.core.history.History
 import io.github.johnbr.fflyahoo.core.live.Landed
 import io.github.johnbr.fflyahoo.core.live.Pending
 import io.github.johnbr.fflyahoo.core.live.PendingPlays
+import io.github.johnbr.fflyahoo.core.live.PlaysSchedule
 import io.github.johnbr.fflyahoo.core.live.ScoreBanners
 import io.github.johnbr.fflyahoo.core.live.Situation
 import io.github.johnbr.fflyahoo.core.plays.LeagueSnapshot
@@ -70,6 +71,8 @@ data class LeagueUi(
     val error: String?,
     /** Seconds until the next scheduled poll. */
     val nextPollSeconds: Int?,
+    /** While Yahoo's relay refuses this host: `(since, retryAt)` in epoch seconds, the scores held meanwhile. */
+    val liveRefused: Pair<Double, Double>? = null,
 )
 
 /**
@@ -119,6 +122,7 @@ class LeagueEngine(
     /** `{plays_id: newest play sequence}` as of the END of the last poll — the scoring matcher's floor. */
     private val playsFloor = HashMap<String, Int>()
     private val pending = PendingPlays()
+    private val playsDue = PlaysSchedule()
     private val banners = ScoreBanners()
 
     /** The poll and the chase between polls both write the last-play lines; one at a time. */
@@ -207,6 +211,7 @@ class LeagueEngine(
             updatedAt = data?.fetchedAt,
             error = lastError,
             nextPollSeconds = interval,
+            liveRefused = source.relay.gate.let { gate -> gate.since?.let { it to gate.retryAt } },
         )
     }
 
@@ -220,20 +225,21 @@ class LeagueEngine(
     }
 
     /**
-     * Newest play text for each LIVE NFL game, every poll — the play feed is the only way to know a
-     * play's text has landed. [only] narrows it to those games, between polls. Returns whether any line
-     * changed. Every failure is swallowed: a missing line is cosmetic.
+     * Newest play text for each LIVE NFL game that moved, and every other one now and then ([playsDue]) —
+     * the play feed is the only way to know a play's text has landed. [only] narrows it to those games,
+     * between polls. Returns whether any line changed. Every failure is swallowed: a missing line is cosmetic.
      */
     private suspend fun refreshNflLastPlays(data: LeagueData, now: Double, only: List<String>? = null): Boolean {
         val games = data.nflGames.filter { it.state == "in" && it.playsId.isNotEmpty() }.associateBy { it.playsId }
         val live = only?.filter { it in games } ?: games.keys.take(MAX_NFL_LAST_PLAY_FEEDS)
+        val fresh = if (only == null) playsDue.due(live.associateWith(games::getValue), pending.awaiting(now), now) else live.toSet()
 
         return nflLock.withLock {
             val before = nflLastPlays to pending.texts()
             var changed = false
             if (only == null) pending.forgetOthers(live.toSet())
             val results = coroutineScope {
-                live.map { playsId -> async { attempt { gamePlays(playsId, 1, now, games.getValue(playsId)) } } }.awaitAll()
+                live.map { playsId -> async { attempt { gamePlays(playsId, 1, now, games.getValue(playsId), playsId in fresh) } } }.awaitAll()
             }
             val lastPlays = if (only == null) LinkedHashMap() else LinkedHashMap(nflLastPlays)
             for ((playsId, result) in live.zip(results)) {
@@ -372,11 +378,11 @@ class LeagueEngine(
      * A period end the game's clock has not reached is left out (see [Pending.periodEndNotReached]);
      * [game] is this poll's row for the game, or `null` to take it from the last refresh.
      */
-    private suspend fun gamePlays(playsId: String, limit: Int, now: Double, game: GameState? = null): List<NflPlayRow> {
+    private suspend fun gamePlays(playsId: String, limit: Int, now: Double, game: GameState? = null, fresh: Boolean = true): List<NflPlayRow> {
         if (playsId.isEmpty()) return emptyList()
         val cached = nflPlays[playsId]
         val fetched = attempt {
-            val body = source.relay.plays(playsId, now)
+            val body = source.relay.plays(playsId, now, fresh)
             val (plays, needed) = if (cached != null && cached.body == body) {
                 cached.plays to cached.needed
             } else {
@@ -471,8 +477,12 @@ class LeagueEngine(
         /** Ceiling on last-play feeds per refresh — the whole week's slate, a runaway guard. */
         const val MAX_NFL_LAST_PLAY_FEEDS = 16
 
-        /** How often a game's play feed is re-read between polls while a snap's text is awaited. */
-        const val CHASE_SECONDS = 3.0
+        /**
+         * How often a game's play feed is re-read between polls while a snap's text is awaited. Five
+         * seconds, not the three it was: with eight games live the chase was the larger half of the relay
+         * traffic when the relay began refusing the host (2026-11-01).
+         */
+        const val CHASE_SECONDS = 5.0
 
         /** How late a poll may be (past its interval) before it is treated as coming after a gap. */
         const val GAP_GRACE_SECONDS = 30
