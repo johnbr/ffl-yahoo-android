@@ -57,7 +57,7 @@ internal fun PlayLine(text: String, maxLines: Int) {
     Text(
         text,
         GlanceModifier.fillMaxWidth(),
-        style = TextStyle(color = GlanceTheme.colors.onSurfaceVariant, fontSize = PLAY_SIZE, textAlign = TextAlign.Center),
+        style = TextStyle(color = PLAY, fontSize = PLAY_SIZE, textAlign = TextAlign.Center),
         maxLines = maxLines,
     )
 }
@@ -228,10 +228,11 @@ internal class LineHeights(val team: Dp, val play: Dp) {
     }
 }
 
-// The app's own trend colours (ui/Theme.kt), light and dark.
+// The app's own trend and play colours (ui/Theme.kt), light and dark.
 private val UP = ColorProvider(day = Color(0xFF2E7D32), night = Color(0xFF66BB6A))
 private val DOWN = ColorProvider(day = Color(0xFFC62828), night = Color(0xFFEF5350))
 private val WINNER = ColorProvider(day = Color(0xFFB8860B), night = Color(0xFFFBC02D))
+private val PLAY = ColorProvider(day = Color(0xFF0277BD), night = Color(0xFF4FC3F7))
 private val SCRIM = ColorProvider(day = Color(0x99FFFFFF), night = Color(0x99000000))
 
 private val GAP = 8.dp
