@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.17.1...v0.18.0) (2026-11-01)
+
+
+### Features
+
+* put a scoring play's points on the side of the team that scored ([#68](https://github.com/johnbr/ffl-yahoo-android/issues/68)) ([c778843](https://github.com/johnbr/ffl-yahoo-android/commit/c778843500b80f7f7d863176d7a94d613f23ed7f))
+
 ## [0.17.1](https://github.com/johnbr/ffl-yahoo-android/compare/v0.17.0...v0.17.1) (2026-11-01)
 
 
