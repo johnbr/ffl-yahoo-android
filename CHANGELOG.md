@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.24.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.23.0...v0.24.0) (2026-11-03)
+
+
+### Features
+
+* hold a widget's last play until its NFL game is final ([#87](https://github.com/johnbr/ffl-yahoo-android/issues/87)) ([b1f86c8](https://github.com/johnbr/ffl-yahoo-android/commit/b1f86c8e6145687f7c202d2144e76a58ff53403e))
+
 ## [0.23.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.22.0...v0.23.0) (2026-11-03)
 
 
