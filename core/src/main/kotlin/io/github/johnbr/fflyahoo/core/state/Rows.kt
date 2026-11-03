@@ -3,6 +3,7 @@ package io.github.johnbr.fflyahoo.core.state
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 // What the screens consume. These are the sensor attributes and WebSocket payloads of the Home
 // Assistant integration, typed; serialised with snake_case names they compare 1:1 against the
@@ -41,6 +42,11 @@ data class PlayRow(
     val enriched: Boolean,
     /** `home` / `away` — which side of the matchup row scored it. Only on a row's last play. */
     val side: String? = null,
+    /**
+     * The scorer's NFL club, so a widget can hold the play until that game ends. Not serialised: the
+     * integration's play dicts have no such key, and the parity goldens compare against them.
+     */
+    @Transient val nflTeam: String = "",
 )
 
 @Serializable

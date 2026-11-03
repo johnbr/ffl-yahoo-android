@@ -5,7 +5,9 @@ import io.github.johnbr.fflyahoo.core.client.Fetcher
 import io.github.johnbr.fflyahoo.core.client.LeagueSource
 import io.github.johnbr.fflyahoo.core.client.RelayClient
 import io.github.johnbr.fflyahoo.core.client.SeedClient
+import io.github.johnbr.fflyahoo.core.plays.ScoringEvent
 import io.github.johnbr.fflyahoo.core.present.Present
+import io.github.johnbr.fflyahoo.core.state.LeagueState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -26,7 +28,11 @@ class MatchupGamesTest {
     private val denAtKc = "g|20260914012|7|12|S|"
 
     /** One poll of the w1 fixtures as [teamId]; returns the live games its matchup tab shows. */
-    private fun liveGamesFor(teamId: String, games: String = baseGames): Pair<Set<String>, List<String>> = runBlocking {
+    private fun liveGamesFor(teamId: String, games: String = baseGames): Pair<Set<String>, List<String>> =
+        poll(teamId, games) { ui -> ui.myClubs to Present.liveGamesFor(ui.nfl.games, ui.myClubs).map { "${it.away.abbr}@${it.home.abbr}" } }
+
+    /** One poll of the w1 fixtures as [teamId], read by [read]. */
+    private fun <T> poll(teamId: String, games: String = baseGames, read: (LeagueUi) -> T): T = runBlocking {
         val bodies = mapOf(
             "redzone" to Golden.fixture("yahoo_redzone_2026_w1.json"),
             "stats.txt" to Golden.fixture("yahoo_relay_stats_2026_w1.txt"),
@@ -51,8 +57,7 @@ class MatchupGamesTest {
         )
         try {
             engine.refresh()
-            val ui = engine.state.value
-            ui.myClubs to Present.liveGamesFor(ui.nfl.games, ui.myClubs).map { "${it.away.abbr}@${it.home.abbr}" }
+            read(engine.state.value)
         } finally {
             scope.cancel()
             dispatcher.close()
@@ -78,6 +83,19 @@ class MatchupGamesTest {
         check(games != baseGames)
         assertEquals(emptyList<String>(), liveGamesFor("1", games).second)
         assertEquals(listOf("Den@KC"), liveGamesFor("2", games).second)
+    }
+
+    @Test
+    fun `a play's club finds its game`() {
+        // The widgets hold a play until this game is final, so the club has to name a game on the slate.
+        val event = ScoringEvent(
+            eventId = "e", week = 1, timestamp = 1.0, playerKey = "p", playerName = "K. Walker III", teamKey = "t",
+            matchupId = "w1.m1", nflTeam = "Sea", position = "RB", delta = 1.0, oldPoints = 0.0, newPoints = 1.0,
+            starter = true, correction = false,
+        )
+        assertEquals("Sea", LeagueState.playRow(event).nflTeam)
+        val states = poll("1") { ui -> listOf("Sea", "SEA", "NE", "Den", "", "XYZ").map { Present.gameFor(ui.nfl.games, it)?.state } }
+        assertEquals(listOf("in", "in", "in", "pre", null, null), states)
     }
 
     @Test

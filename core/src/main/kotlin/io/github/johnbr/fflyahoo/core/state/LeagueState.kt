@@ -201,6 +201,7 @@ object LeagueState {
             correction = event.correction,
             starter = event.starter,
             enriched = event.enriched,
+            nflTeam = event.nflTeam.orEmpty(),
         )
     }
 
