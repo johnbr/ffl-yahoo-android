@@ -79,7 +79,8 @@ class LeagueWidget : GlanceAppWidget() {
         // closes its gaps, and then drops its play lines, when that makes it fit. One that won't fit
         // either way keeps both and scrolls: tight gaps only make a long list harder to read.
         val lines = LineHeights.measure(context)
-        val room = size.height - PADDING * 2
+        val title = s.leagueName.isNotEmpty()
+        val room = size.height - PADDING * 2 - (if (title) lines.title else 0.dp)
         val teams = lines.team * (2 * s.matchups.size)
         val plays = lines.play * s.matchups.count { it.lastPlay.isNotEmpty() }
         fun fits(gap: Dp, withPlays: Boolean) = teams + (if (withPlays) plays else 0.dp) + gap * (s.matchups.size - 1) <= room
@@ -89,17 +90,20 @@ class LeagueWidget : GlanceAppWidget() {
             fits(TIGHT_GAP, false) -> TIGHT_GAP to false
             else -> GAP to true
         }
-        // A list's items take the taps; the list itself can't.
-        LazyColumn(GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp, vertical = PADDING)) {
-            itemsIndexed(s.matchups) { index, m ->
-                // A finished matchup's projections are just its scores again, and its counts are zero.
-                val projections = wide && !m.final
-                val counts = projections && (m.myRemaining != null || m.opponentRemaining != null)
-                // Its lineup, in the app: Glance hands the parameter to the activity as an intent extra.
-                val tap = actionStartActivity<MainActivity>(actionParametersOf(MATCHUP to m.matchupId))
-                Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else gap).clickable(tap)) {
-                    MatchupLines(m, projections, counts, columns)
-                    if (showPlays && m.lastPlay.isNotEmpty()) PlayLine(m.lastPlay, maxLines = 1)
+        Column(GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp, vertical = PADDING)) {
+            if (title) TitleLine(s.leagueName, GlanceModifier.clickable(open))
+            // A list's items take the taps; the list itself can't.
+            LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
+                itemsIndexed(s.matchups) { index, m ->
+                    // A finished matchup's projections are just its scores again, and its counts are zero.
+                    val projections = wide && !m.final
+                    val counts = projections && (m.myRemaining != null || m.opponentRemaining != null)
+                    // Its lineup, in the app: Glance hands the parameter to the activity as an intent extra.
+                    val tap = actionStartActivity<MainActivity>(actionParametersOf(MATCHUP to m.matchupId))
+                    Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else gap).clickable(tap)) {
+                        MatchupLines(m, projections, counts, columns)
+                        if (showPlays && m.lastPlay.isNotEmpty()) PlayLine(m.lastPlay, maxLines = 1)
+                    }
                 }
             }
         }

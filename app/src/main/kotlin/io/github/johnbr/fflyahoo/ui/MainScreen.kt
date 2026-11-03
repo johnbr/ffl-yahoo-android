@@ -266,6 +266,15 @@ private fun MyMatchupTab(ui: LeagueUi, engine: LeagueEngine?, focus: String?, on
         if (focus == row?.matchupId) panels.open = focus to Panel.ROSTER
         onFocused()
     }
+    // Your own matchup is the point of this tab, so it opens on its lineup: once per matchup each time
+    // the tab is shown, so closing it sticks until you leave the tab or the week turns over.
+    var shown by remember(ui.leagueId) { mutableStateOf<String?>(null) }
+    LaunchedEffect(row?.matchupId) {
+        val id = row?.matchupId ?: return@LaunchedEffect
+        if (shown == id) return@LaunchedEffect
+        shown = id
+        if (panels.open == null) panels.open = id to Panel.ROSTER
+    }
     // Under the matchup, the games its starters are playing in right now, as the NFL tab shows them.
     val live = Present.liveGamesFor(ui.nfl.games, ui.myClubs)
     val now = rememberBannerClock(live, ui.updatedAt)

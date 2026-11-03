@@ -121,7 +121,11 @@ data class WidgetSnapshot(
 
 /** What the league widget draws: every matchup, in the league's order, home team on top. */
 @Serializable
-data class LeagueSnapshot(val matchups: List<WidgetSnapshot>) {
+data class LeagueSnapshot(
+    val matchups: List<WidgetSnapshot>,
+    /** The widget's title. Empty in a snapshot saved before it had one. */
+    val leagueName: String = "",
+) {
     /** This snapshot, without each play line that has had its [Present.PLAY_LINE_SECONDS] by [now]. */
     fun expired(now: Double): LeagueSnapshot = copy(matchups = matchups.map { it.expired(now) })
 
@@ -138,7 +142,7 @@ data class LeagueSnapshot(val matchups: List<WidgetSnapshot>) {
 
         fun of(ui: LeagueUi, now: Double = nowSeconds()): LeagueSnapshot? =
             ui.scoreboard.matchups.takeIf { it.isNotEmpty() }
-                ?.let { rows -> LeagueSnapshot(rows.map { WidgetSnapshot.of(it.home, it.away, it, now) }) }
+                ?.let { rows -> LeagueSnapshot(rows.map { WidgetSnapshot.of(it.home, it.away, it, now) }, ui.scoreboard.leagueName) }
     }
 }
 

@@ -62,6 +62,17 @@ internal fun PlayLine(text: String, maxLines: Int) {
     )
 }
 
+/** A widget's name across its top, centred, in the app's green. */
+@Composable
+internal fun TitleLine(text: String, modifier: GlanceModifier = GlanceModifier) {
+    Text(
+        text,
+        modifier.fillMaxWidth().padding(bottom = TITLE_GAP),
+        style = TextStyle(color = UP, fontSize = TITLE_SIZE, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+        maxLines = 1,
+    )
+}
+
 /**
  * One team: the name, then its projection, its points and its starters left to play. Each figure is
  * split at its decimal point into a right-aligned whole part and a left-aligned fraction, in columns as
@@ -205,7 +216,7 @@ private fun widgetTypeface(context: Context, style: Int): Typeface {
  * (Glance's are) is as tall as its font's top-to-bottom extent, which is more than its size: a 16sp line
  * of points is over 20dp.
  */
-internal class LineHeights(val team: Dp, val play: Dp) {
+internal class LineHeights(val team: Dp, val play: Dp, val title: Dp) {
     companion object {
         fun measure(context: Context): LineHeights {
             val metrics = context.resources.displayMetrics
@@ -223,7 +234,7 @@ internal class LineHeights(val team: Dp, val play: Dp) {
             }
             // A team line is as tall as its tallest text: the points, or a winner's name.
             val team = maxOf(height(POINTS_SIZE, bold = true), height(WINNER_NAME_SIZE, bold = true))
-            return LineHeights(team, height(PLAY_SIZE, bold = false) + PLAY_GAP)
+            return LineHeights(team, height(PLAY_SIZE, bold = false) + PLAY_GAP, height(TITLE_SIZE, bold = true) + TITLE_GAP)
         }
     }
 }
@@ -243,6 +254,8 @@ private val POINTS_SIZE = 16.sp
 private val COUNT_SIZE = 12.sp
 private val COUNT_GAP = 4.dp
 private val PLAY_SIZE = 12.sp
+private val TITLE_SIZE = 13.sp
+private val TITLE_GAP = 4.dp
 private val PLAY_GAP = 2.dp
 
 /** `(3)`, or nothing for a side the tier can't count. */
