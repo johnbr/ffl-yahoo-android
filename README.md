@@ -38,9 +38,10 @@ leagues work too.
     decimal points lined up.
   - After each score, how many of that team's starters still have a game to finish, in progress or
     yet to kick off: `111.74 (3)`.
-  - The last play, for three minutes after it scores. Two rows tall, the play gets two lines.
+  - The last play, until that player's NFL game is final (three minutes when the game can't be
+    found). Two rows tall, the play gets two lines. Tap the widget to open My Matchup with your lineup showing.
   - Once the matchup is over, the projections and counts drop away and the winner turns gold.
-- **League widget.** Every matchup in the league stacked, each drawn as the matchup widget draws
+- **League widget.** Your league's name across the top in green, then every matchup in the league stacked, each drawn as the matchup widget draws
   yours, with the decimal points lined up down the stack. A stack a little too tall for the widget
   tightens its gaps and then drops its play lines to fit; a much taller one scrolls.
   Tap a matchup to open it in the app with its lineup showing: yours on My Matchup, any other on

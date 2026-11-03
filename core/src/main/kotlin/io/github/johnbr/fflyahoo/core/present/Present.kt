@@ -107,6 +107,10 @@ object Present {
         }
     }
 
+    /** The game [club] is playing in, if it is on the slate. */
+    fun gameFor(rows: List<NflGameRow>, club: String): NflGameRow? =
+        club.takeIf { it.isNotEmpty() }?.let { c -> rows.firstOrNull { c.equals(it.away.abbr, true) || c.equals(it.home.abbr, true) } }
+
     /**
      * How long a glance view shows a scoring play, in seconds: the integration's my-score card's
      * `MY_SCORE_PLAY_SECONDS`. A play is news for a few minutes, then just room taken.

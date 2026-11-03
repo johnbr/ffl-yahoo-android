@@ -16,6 +16,7 @@ import io.github.johnbr.fflyahoo.app
 import io.github.johnbr.fflyahoo.core.engine.LeagueUi
 import io.github.johnbr.fflyahoo.core.present.Present
 import io.github.johnbr.fflyahoo.core.state.MatchupRow
+import io.github.johnbr.fflyahoo.core.state.NflGameRow
 import io.github.johnbr.fflyahoo.core.state.TeamRow
 import io.github.johnbr.fflyahoo.data.EngineHub
 import io.github.johnbr.fflyahoo.data.SettingsStore
@@ -54,7 +55,10 @@ data class WidgetSnapshot(
     val opponentName: String,
     val opponentPoints: String,
     val opponentProjected: String,
-    /** The matchup's last play, or `""` once its [Present.PLAY_LINE_SECONDS] are up. */
+    /**
+     * The matchup's last play, until the scorer's NFL game is over; `""` after. A play whose game isn't
+     * on the slate falls back to [Present.PLAY_LINE_SECONDS].
+     */
     val lastPlay: String,
     /** `me` / `opponent` — who is ahead; empty on a tie or before a score. */
     val leader: String = "",
@@ -70,10 +74,15 @@ data class WidgetSnapshot(
     val lastPlayAt: Double = 0.0,
     /** `w7.m3`: which matchup a tap on it opens in the app. */
     val matchupId: String = "",
+    /** [lastPlay]'s game is still on: it stays until a publish sees the game over, not on a timer. */
+    val lastPlayHeld: Boolean = false,
 ) {
-    /** This snapshot, without its play line if that has had its [Present.PLAY_LINE_SECONDS] by [now]. */
+    /** This snapshot, without its play line if that is on the timer and it has run out by [now]. */
     fun expired(now: Double): WidgetSnapshot =
-        if (lastPlay.isNotEmpty() && Present.playLineLeft(lastPlayAt, now) == 0.0) copy(lastPlay = "") else this
+        if (timed && Present.playLineLeft(lastPlayAt, now) == 0.0) copy(lastPlay = "") else this
+
+    /** A play line on [Present.PLAY_LINE_SECONDS] rather than held for its game. */
+    val timed: Boolean get() = lastPlay.isNotEmpty() && !lastPlayHeld
 
     companion object {
         private fun file(context: Context) = File(context.filesDir, "widget.json")
@@ -88,12 +97,19 @@ data class WidgetSnapshot(
 
         fun of(ui: LeagueUi, now: Double = nowSeconds()): WidgetSnapshot? {
             val mine = ui.myTeam ?: return null
-            return of(mine.me, mine.opponent, ui.scoreboard.matchups.firstOrNull { it.matchupId == mine.matchupId }, now)
+            return of(mine.me, mine.opponent, ui.scoreboard.matchups.firstOrNull { it.matchupId == mine.matchupId }, ui.nfl.games, now)
         }
 
         /** [first] on top as "me", [second] under it as "opponent". */
-        fun of(first: TeamRow, second: TeamRow, row: MatchupRow?, now: Double): WidgetSnapshot {
+        fun of(first: TeamRow, second: TeamRow, row: MatchupRow?, games: List<NflGameRow>, now: Double): WidgetSnapshot {
             val play = row?.lastPlay
+            // Shown until the scorer's game is final; a play with no game to go by gets the timer.
+            val game = play?.let { Present.gameFor(games, it.nflTeam) }
+            val shown = when {
+                play == null -> false
+                game != null -> game.state != "post"
+                else -> Present.playLineLeft(play.timestamp, now) > 0.0
+            }
             return WidgetSnapshot(
                 myName = first.name,
                 myPoints = Present.points(first.points),
@@ -101,7 +117,7 @@ data class WidgetSnapshot(
                 opponentName = second.name,
                 opponentPoints = Present.points(second.points),
                 opponentProjected = Present.points(second.liveProjected),
-                lastPlay = play?.takeIf { Present.playLineLeft(it.timestamp, now) > 0.0 }?.shortText ?: "",
+                lastPlay = play?.takeIf { shown }?.shortText ?: "",
                 myTrend = Present.trend(first.liveProjected, first.projected)?.name ?: "",
                 opponentTrend = Present.trend(second.liveProjected, second.projected)?.name ?: "",
                 final = row?.final ?: false,
@@ -114,6 +130,7 @@ data class WidgetSnapshot(
                 opponentRemaining = second.remaining,
                 lastPlayAt = play?.timestamp ?: 0.0,
                 matchupId = row?.matchupId ?: "",
+                lastPlayHeld = shown && game != null,
             )
         }
     }
@@ -126,7 +143,7 @@ data class LeagueSnapshot(
     /** The widget's title. Empty in a snapshot saved before it had one. */
     val leagueName: String = "",
 ) {
-    /** This snapshot, without each play line that has had its [Present.PLAY_LINE_SECONDS] by [now]. */
+    /** This snapshot, without each timed play line that has run out by [now]. */
     fun expired(now: Double): LeagueSnapshot = copy(matchups = matchups.map { it.expired(now) })
 
     companion object {
@@ -142,7 +159,7 @@ data class LeagueSnapshot(
 
         fun of(ui: LeagueUi, now: Double = nowSeconds()): LeagueSnapshot? =
             ui.scoreboard.matchups.takeIf { it.isNotEmpty() }
-                ?.let { rows -> LeagueSnapshot(rows.map { WidgetSnapshot.of(it.home, it.away, it, now) }, ui.scoreboard.leagueName) }
+                ?.let { rows -> LeagueSnapshot(rows.map { WidgetSnapshot.of(it.home, it.away, it, ui.nfl.games, now) }, ui.scoreboard.leagueName) }
     }
 }
 
@@ -193,7 +210,7 @@ class WidgetUpdater(
     private fun scheduleExpiry() {
         val now = nowSeconds()
         val left = (listOfNotNull(snapshot.value) + league.value?.matchups.orEmpty())
-            .filter { it.lastPlay.isNotEmpty() }
+            .filter { it.timed }
             .map { Present.playLineLeft(it.lastPlayAt, now) }
             .filter { it.isFinite() }
             .minOrNull() ?: return
@@ -245,7 +262,7 @@ class WidgetUpdater(
     }
 }
 
-/** When a widget's play line has had its [Present.PLAY_LINE_SECONDS]: redraw it without the play. */
+/** When a timed play line has had its [Present.PLAY_LINE_SECONDS]: redraw the widget without it. */
 class PlayExpiryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val widgets = applicationContext.app.widgets
