@@ -13,6 +13,8 @@ import androidx.glance.GlanceTheme
 import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.clickable
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.actionParametersOf
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
@@ -70,7 +72,8 @@ class MatchupWidget : GlanceAppWidget() {
                 .fillMaxSize()
                 .scrim()
                 .padding(horizontal = 12.dp, vertical = if (tall) 8.dp else 4.dp)
-                .clickable(actionStartActivity<MainActivity>()),
+                // Opens on this matchup's lineup, wherever the app was left.
+                .clickable(actionStartActivity<MainActivity>(actionParametersOf(MATCHUP to (s?.matchupId ?: "")))),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (s == null) {
@@ -83,6 +86,8 @@ class MatchupWidget : GlanceAppWidget() {
     }
 
     companion object {
+        private val MATCHUP = ActionParameters.Key<String>(MainActivity.EXTRA_MATCHUP)
+
         /** Names and scores only: a narrow widget. */
         val SMALL = DpSize(110.dp, 48.dp)
 
