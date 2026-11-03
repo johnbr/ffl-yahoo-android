@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.23.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.22.0...v0.23.0) (2026-11-03)
+
+
+### Features
+
+* open my matchup's lineup by default, and title the league widget ([#85](https://github.com/johnbr/ffl-yahoo-android/issues/85)) ([2020150](https://github.com/johnbr/ffl-yahoo-android/commit/202015023513878f6733d6badea813af6ded558f))
+
 ## [0.22.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.21.0...v0.22.0) (2026-11-01)
 
 
