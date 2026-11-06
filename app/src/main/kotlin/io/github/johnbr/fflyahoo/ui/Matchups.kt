@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.text.appendInlineContent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.Placeholder
@@ -143,6 +144,21 @@ fun MatchupRowView(
 
 @Composable
 private fun TeamName(team: TeamRow, leader: Boolean, align: TextAlign, modifier: Modifier) {
+    val weight = if (leader) FontWeight.Bold else FontWeight.Normal
+    // Upright on a phone a name gets about a third of the row, so it gives up the record and shrinks
+    // to hold one line; only a name too long even at the smallest size is cut.
+    if (compactWidth()) {
+        Text(
+            team.name,
+            modifier = modifier,
+            textAlign = align,
+            fontWeight = weight,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = 14.sp, stepSize = 0.5.sp),
+        )
+        return
+    }
     // The season record follows the name, "Tesla (0-4)", held to it by a no-break space so a
     // wrapping name never leaves it alone on a line.
     val recordColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -156,7 +172,7 @@ private fun TeamName(team: TeamRow, leader: Boolean, align: TextAlign, modifier:
         modifier = modifier,
         textAlign = align,
         fontSize = 14.sp,
-        fontWeight = if (leader) FontWeight.Bold else FontWeight.Normal,
+        fontWeight = weight,
     )
 }
 
