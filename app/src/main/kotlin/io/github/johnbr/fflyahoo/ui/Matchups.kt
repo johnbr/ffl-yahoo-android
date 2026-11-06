@@ -53,6 +53,7 @@ import io.github.johnbr.fflyahoo.core.state.PlayerRow
 import io.github.johnbr.fflyahoo.core.state.TeamRow
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.math.roundToInt
 
 /** Which panel a matchup row has open — one at a time, across the whole screen. */
 enum class Panel { ROSTER, PLAYS, PLAYER }
@@ -250,13 +251,20 @@ private fun ProjectionSide(team: TeamRow, align: Alignment.Horizontal, modifier:
     }
 }
 
-/** Projected winner, as a split bar: this app's own estimate from the live projections. */
+/**
+ * Projected winner, as a split bar: this app's own estimate from the live projections.
+ *
+ * The better chance reads green and the other red. They are compared as printed, so a 50.3/49.7
+ * split showing 50% twice stays grey on both sides rather than green against the same number in red.
+ */
 @Composable
 private fun WinBar(row: MatchupRow) {
     val p = row.winProb ?: return
     val home = p.coerceIn(0.0, 1.0)
     val away = 1 - home
     val homeFav = home >= away
+    val homePct = (home * 100).roundToInt().toDouble()
+    val awayPct = (away * 100).roundToInt().toDouble()
     val fav = LocalFfl.current.up
     val other = MaterialTheme.colorScheme.outlineVariant
     Row(
@@ -265,12 +273,12 @@ private fun WinBar(row: MatchupRow) {
         },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(Present.percent(home), fontSize = 12.sp, fontWeight = if (homeFav) FontWeight.Bold else FontWeight.Normal)
+        Text(Present.percent(home), fontSize = 12.sp, fontWeight = if (homeFav) FontWeight.Bold else FontWeight.Normal, color = trendColor(Present.trend(homePct, awayPct)))
         Row(Modifier.weight(1f).padding(horizontal = 8.dp).height(6.dp).clip(RoundedCornerShape(3.dp))) {
             if (home > 0) Box(Modifier.weight(home.toFloat()).height(6.dp).background(if (homeFav) fav else other))
             if (away > 0) Box(Modifier.weight(away.toFloat()).height(6.dp).background(if (homeFav) other else fav))
         }
-        Text(Present.percent(away), fontSize = 12.sp, fontWeight = if (homeFav) FontWeight.Normal else FontWeight.Bold)
+        Text(Present.percent(away), fontSize = 12.sp, fontWeight = if (homeFav) FontWeight.Normal else FontWeight.Bold, color = trendColor(Present.trend(awayPct, homePct)))
     }
 }
 
