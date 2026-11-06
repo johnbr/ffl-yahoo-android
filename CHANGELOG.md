@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.25.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.24.0...v0.25.0) (2026-11-06)
+
+
+### Features
+
+* colour a matchup's win percentages green and red ([#89](https://github.com/johnbr/ffl-yahoo-android/issues/89)) ([a6bc8d5](https://github.com/johnbr/ffl-yahoo-android/commit/a6bc8d5fcfd55cdd10e34cfbddec24f459150e11))
+
 ## [0.24.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.23.0...v0.24.0) (2026-11-03)
 
 
