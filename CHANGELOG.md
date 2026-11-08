@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.27.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.26.0...v0.27.0) (2026-11-08)
+
+
+### Features
+
+* give each matchup on the league widget a shaded tile ([#93](https://github.com/johnbr/ffl-yahoo-android/issues/93)) ([82ee8e3](https://github.com/johnbr/ffl-yahoo-android/commit/82ee8e36aa402bafb366eea668df720f33a92609))
+
 ## [0.26.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.25.0...v0.26.0) (2026-11-06)
 
 
