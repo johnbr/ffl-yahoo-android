@@ -35,9 +35,10 @@ import io.github.johnbr.fflyahoo.ui.MainActivity
 /**
  * Every matchup in the league on the home screen, stacked, each drawn as the single-matchup widget draws
  * one: home team over away, the live projections and starters left once it is wide enough, and the
- * last play for three minutes after it scores. The figures line up down the whole stack, and a stack
- * a little taller than the widget gives up its gaps, then its play lines, to fit; one taller still
- * scrolls. Tapping a matchup opens the app on it.
+ * last play for three minutes after it scores. Each matchup sits on a shaded tile of its own, so the
+ * pairs stand apart. The figures line up down the whole stack, and a stack a little taller than the
+ * widget gives up its gaps and some of its tiles' padding, then its play lines, to fit; one taller
+ * still scrolls. Tapping a matchup opens the app on it.
  */
 class LeagueWidget : GlanceAppWidget() {
     // Exact, not Responsive: fitting the stack needs the widget's real height, not the nearest breakpoint's.
@@ -83,14 +84,17 @@ class LeagueWidget : GlanceAppWidget() {
         val room = size.height - PADDING * 2 - (if (title) lines.title else 0.dp)
         val teams = lines.team * (2 * s.matchups.size)
         val plays = lines.play * s.matchups.count { it.lastPlay.isNotEmpty() }
-        fun fits(gap: Dp, withPlays: Boolean) = teams + (if (withPlays) plays else 0.dp) + gap * (s.matchups.size - 1) <= room
-        val (gap, showPlays) = when {
-            fits(GAP, true) -> GAP to true
-            fits(TIGHT_GAP, true) -> TIGHT_GAP to true
-            fits(TIGHT_GAP, false) -> TIGHT_GAP to false
-            else -> GAP to true
+        fun fits(gap: Dp, pad: Dp, withPlays: Boolean) =
+            teams + (if (withPlays) plays else 0.dp) + gap * (s.matchups.size - 1) + pad * (2 * s.matchups.size) <= room
+        val (spacing, showPlays) = when {
+            fits(GAP, TILE_PADDING, true) -> (GAP to TILE_PADDING) to true
+            fits(TIGHT_GAP, TIGHT_TILE_PADDING, true) -> (TIGHT_GAP to TIGHT_TILE_PADDING) to true
+            fits(TIGHT_GAP, TIGHT_TILE_PADDING, false) -> (TIGHT_GAP to TIGHT_TILE_PADDING) to false
+            else -> (GAP to TILE_PADDING) to true
         }
-        Column(GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp, vertical = PADDING)) {
+        val (gap, pad) = spacing
+        // The tiles' own inset makes up the rest of the text's usual 12dp from the widget's edge.
+        Column(GlanceModifier.fillMaxSize().scrim().padding(horizontal = 12.dp - TILE_INSET, vertical = PADDING)) {
             if (title) TitleLine(s.leagueName, GlanceModifier.clickable(open))
             // A list's items take the taps; the list itself can't.
             LazyColumn(GlanceModifier.fillMaxWidth().defaultWeight()) {
@@ -100,9 +104,11 @@ class LeagueWidget : GlanceAppWidget() {
                     val counts = projections && (m.myRemaining != null || m.opponentRemaining != null)
                     // Its lineup, in the app: Glance hands the parameter to the activity as an intent extra.
                     val tap = actionStartActivity<MainActivity>(actionParametersOf(MATCHUP to m.matchupId))
-                    Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else gap).clickable(tap)) {
-                        MatchupLines(m, projections, counts, columns)
-                        if (showPlays && m.lastPlay.isNotEmpty()) PlayLine(m.lastPlay, maxLines = 1)
+                    Column(GlanceModifier.fillMaxWidth().padding(top = if (index == 0) 0.dp else gap)) {
+                        Column(GlanceModifier.fillMaxWidth().tile().padding(horizontal = TILE_INSET, vertical = pad).clickable(tap)) {
+                            MatchupLines(m, projections, counts, columns)
+                            if (showPlays && m.lastPlay.isNotEmpty()) PlayLine(m.lastPlay, maxLines = 1)
+                        }
                     }
                 }
             }
@@ -118,6 +124,15 @@ class LeagueWidget : GlanceAppWidget() {
 
         /** The same, when the stack is short of room. */
         private val TIGHT_GAP = 2.dp
+
+        /** Above and below a matchup's lines, inside its tile. */
+        private val TILE_PADDING = 4.dp
+
+        /** The same, when the stack is short of room. */
+        private val TIGHT_TILE_PADDING = 1.dp
+
+        /** Either side of a matchup's lines, inside its tile. */
+        private val TILE_INSET = 6.dp
 
         private val PADDING = 8.dp
 

@@ -50,6 +50,12 @@ internal fun MatchupLines(s: WidgetSnapshot, projections: Boolean, counts: Boole
  */
 internal fun GlanceModifier.scrim(): GlanceModifier = background(SCRIM).cornerRadius(16.dp)
 
+/**
+ * A shade behind one matchup in the league's stack, a step darker than the scrim in the light theme and
+ * a step lighter in the dark, so each pair of teams reads as one block rather than part of a list.
+ */
+internal fun GlanceModifier.tile(): GlanceModifier = background(TILE).cornerRadius(10.dp)
+
 /** The last play, centred under the two score lines so it doesn't read as a third team. */
 @Composable
 internal fun PlayLine(text: String, maxLines: Int) {
@@ -245,6 +251,7 @@ private val DOWN = ColorProvider(day = Color(0xFFC62828), night = Color(0xFFEF53
 private val WINNER = ColorProvider(day = Color(0xFFB8860B), night = Color(0xFFFBC02D))
 private val PLAY = ColorProvider(day = Color(0xFF0277BD), night = Color(0xFF4FC3F7))
 private val SCRIM = ColorProvider(day = Color(0x99FFFFFF), night = Color(0x99000000))
+private val TILE = ColorProvider(day = Color(0x12000000), night = Color(0x1FFFFFFF))
 
 private val GAP = 8.dp
 private val NAME_SIZE = 14.sp
