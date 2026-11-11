@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.28.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.27.0...v0.28.0) (2026-11-11)
+
+
+### Features
+
+* hold a player name to one line on a phone held upright ([#99](https://github.com/johnbr/ffl-yahoo-android/issues/99)) ([37ddfb0](https://github.com/johnbr/ffl-yahoo-android/commit/37ddfb03822b852ee6474ad1e3d755c353a71de0))
+
 ## [0.27.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.26.0...v0.27.0) (2026-11-08)
 
 
