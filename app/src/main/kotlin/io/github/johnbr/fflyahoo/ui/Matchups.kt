@@ -339,7 +339,7 @@ private fun Lineup(home: List<PlayerRow>, away: List<PlayerRow>, onPlayer: (Stri
 /**
  * A phone held upright: under 600dp wide, Material's "compact" width. The lineup is two players side
  * by side there, ~120dp of name each, so it sheds what can live elsewhere — the stat line moves to the
- * player's own view, and the names and slot chip shrink a little so most names hold one line.
+ * player's own view, and the names and slot chip shrink so names hold one line.
  */
 @Composable
 private fun compactWidth(): Boolean = LocalConfiguration.current.screenWidthDp < 600
@@ -460,8 +460,21 @@ private fun PlayerName(player: PlayerRow, textAlign: TextAlign) {
             }
         }
     }
-    // A size down on a phone held upright, where at 13sp a name like "D. Samuel Sr. (SF) Q" took two lines.
-    Text(text, inlineContent = inline, fontSize = if (compactWidth()) 12.sp else 13.sp, fontWeight = FontWeight.SemiBold, textAlign = textAlign)
+    // On a phone held upright, where at 13sp a name like "D. Samuel Sr. (SF) Q" took two lines, it
+    // shrinks to hold one, as a team name does; only a name too long even at the smallest size is cut.
+    if (compactWidth()) {
+        Text(
+            text,
+            inlineContent = inline,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = textAlign,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = 13.sp, stepSize = 0.5.sp),
+        )
+        return
+    }
+    Text(text, inlineContent = inline, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, textAlign = textAlign)
 }
 
 private data class InlineBadge(val id: String, val text: String, val color: Color, val filled: Boolean)
