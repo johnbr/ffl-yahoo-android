@@ -118,7 +118,6 @@ fun MatchupRowView(
                         // Everything between the team names and the lineup opens the scoring plays: the play
                         // line is the usual way in, but it is gone once no starter is playing.
                         Column(Modifier.fillMaxWidth().clickable(onClickLabel = "Scoring plays") { onToggle(Panel.PLAYS) }) {
-                            Projections(row)
                             WinBar(row)
                         }
                         if (detail == null) Loading("Loading rosters…") else Rosters(detail, onPlayer)
@@ -247,24 +246,6 @@ private fun PanelLink(text: String, align: Alignment, onClick: () -> Unit) {
 @Composable
 private fun Loading(text: String) {
     Text(text, Modifier.padding(8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-}
-
-/** Each side's morning projection: "orig X" once the live one (in the row's foot) has moved, else "proj X". */
-@Composable
-private fun Projections(row: MatchupRow) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        ProjectionSide(row.home, Alignment.Start, Modifier.weight(1f))
-        ProjectionSide(row.away, Alignment.End, Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun ProjectionSide(team: TeamRow, align: Alignment.Horizontal, modifier: Modifier) {
-    val live = Present.hasLive(team.liveProjected, team.projected)
-    // Only the morning's number: the live projection already sits under the names, in the row's foot.
-    Column(modifier, horizontalAlignment = align) {
-        Text("${if (live) "orig" else "proj"} ${Present.points(team.projected)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
 }
 
 /**
