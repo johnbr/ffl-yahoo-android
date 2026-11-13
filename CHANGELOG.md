@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.29.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.28.0...v0.29.0) (2026-11-13)
+
+
+### Features
+
+* drop the team projections from an opened matchup ([#101](https://github.com/johnbr/ffl-yahoo-android/issues/101)) ([4454f36](https://github.com/johnbr/ffl-yahoo-android/commit/4454f3640a33e39a853ae026ab08a6d20efe02a0))
+
 ## [0.28.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.27.0...v0.28.0) (2026-11-11)
 
 
