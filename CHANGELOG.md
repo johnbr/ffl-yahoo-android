@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.30.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.29.0...v0.30.0) (2026-11-17)
+
+
+### Features
+
+* show a decided winner's score in blue instead of gold ([#106](https://github.com/johnbr/ffl-yahoo-android/issues/106)) ([f32c181](https://github.com/johnbr/ffl-yahoo-android/commit/f32c1811877febd5df72520bb7c409ead9b39e31))
+
 ## [0.29.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.28.0...v0.29.0) (2026-11-13)
 
 
