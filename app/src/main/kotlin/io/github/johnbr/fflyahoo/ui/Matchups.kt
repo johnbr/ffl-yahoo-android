@@ -177,7 +177,7 @@ private fun TeamName(team: TeamRow, leader: Boolean, align: TextAlign, modifier:
 
 @Composable
 private fun Score(points: Double?, leader: Boolean, final: Boolean) {
-    // Bold for the side ahead, gold once that lead is a result — never mid-game.
+    // Bold for the side ahead, blue once that lead is a result — never mid-game.
     Text(
         Present.points(points),
         fontSize = 15.sp,
@@ -353,7 +353,7 @@ private fun PlayerBlock(player: PlayerRow?, home: Boolean, now: Instant, zone: Z
     val bg = if (player.gameState == "in") ffl.liveTint else Color.Transparent
     val live = Present.hasLive(player.liveProjected, player.projected)
     val proj = if (live) player.liveProjected else player.projected
-    // A finished game gets no line: the gold points already say "done", and his
+    // A finished game gets no line: the blue points already say "done", and his
     // club's result ("Final W 26-7 @ Pit") is not what a fantasy lineup is for.
     val game = if (player.gameState == "post") {
         ""

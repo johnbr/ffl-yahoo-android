@@ -51,7 +51,7 @@ data class FflColors(
 }
 
 private val LightFfl = FflColors(
-    winner = Color(0xFFB8860B), // the card's #fbc02d reads poorly on white; a deeper gold keeps contrast
+    winner = Color(0xFF1565C0), // the card's #2979ff, a shade deeper for white
     play = Color(0xFF0277BD), // a matchup's last scoring play; the card's --info-color, a shade deeper for white
     up = Color(0xFF2E7D32),
     down = Color(0xFFC62828),
@@ -69,7 +69,7 @@ private val LightFfl = FflColors(
 )
 
 private val DarkFfl = FflColors(
-    winner = Color(0xFFFBC02D),
+    winner = Color(0xFF448AFF),
     play = Color(0xFF4FC3F7),
     up = Color(0xFF66BB6A),
     down = Color(0xFFEF5350),
