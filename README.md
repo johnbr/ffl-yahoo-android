@@ -122,8 +122,11 @@ Download the APK from the [latest release](https://github.com/johnbr/ffl-yahoo-a
 and open it on your phone. You will need to allow installing from your browser or file manager.
 Android 8.0 or newer is required.
 
-To get updates automatically, add `https://github.com/johnbr/ffl-yahoo-android` to
-[Obtainium](https://github.com/ImranR98/Obtainium).
+The app updates itself. When you open it, it checks this repo's latest release on GitHub at most every
+six hours, and offers a newer version in a strip above the tabs; Settings → About has a manual check.
+**Update** downloads the release's APK, checks it against GitHub's SHA-256, and hands it to Android,
+which asks you to confirm. The first time, Android also asks you to allow the app under "Install
+unknown apps". Obtainium (`https://github.com/johnbr/ffl-yahoo-android`) still works if you prefer it.
 
 On first launch, paste your league id or the league's URL. The id is `802904` in
 `https://football.fantasysports.yahoo.com/f1/802904`. Then pick your team.

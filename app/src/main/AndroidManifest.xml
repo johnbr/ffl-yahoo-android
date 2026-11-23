@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Yahoo's anonymous GameChannel feeds. Nothing else is contacted. -->
+    <!-- Yahoo's anonymous GameChannel feeds, ESPN's anonymous fantasy API, and GitHub for updates. -->
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Self-update: installs a newer release's APK from GitHub, after Android's own confirmation. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Live mode: a foreground service through a game window, started by an exact alarm before
          kickoff, with scoring alerts. -->
@@ -55,6 +58,10 @@
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".update.InstallReceiver"
+            android:exported="false" />
 
         <receiver
             android:name=".widget.MatchupWidgetReceiver"

@@ -97,6 +97,7 @@ fun MainScreen(settings: AppSettings, ui: LeagueUi?, engine: LeagueEngine?, vm: 
             PrimaryTabRow(selectedTabIndex = tabs.indexOf(tab)) {
                 tabs.forEach { t -> Tab(selected = t == tab, onClick = { tab = t }, text = { Text(t.label) }) }
             }
+            UpdateBanner()
             ui?.error?.let { ErrorStrip(it, ui.updatedAt) }
             ui?.liveRefused?.let { (since, retryAt) -> RefusedStrip(since, retryAt) }
             var refreshing by remember { mutableStateOf(false) }
