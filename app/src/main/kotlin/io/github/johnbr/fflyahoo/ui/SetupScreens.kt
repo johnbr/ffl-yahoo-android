@@ -230,12 +230,7 @@ fun SettingsScreen(vm: MainViewModel, settings: AppSettings, onBack: () -> Unit,
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Text(
-                "Version ${BuildConfig.VERSION_NAME}",
-                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            UpdateSection(BuildConfig.VERSION_NAME)
             Spacer(Modifier.height(24.dp))
         }
     }

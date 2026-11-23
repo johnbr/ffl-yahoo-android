@@ -6,6 +6,7 @@ import io.github.johnbr.fflyahoo.data.OkHttpFetcher
 import io.github.johnbr.fflyahoo.data.SettingsStore
 import io.github.johnbr.fflyahoo.live.LiveScheduler
 import io.github.johnbr.fflyahoo.notify.Notifier
+import io.github.johnbr.fflyahoo.update.Updater
 import io.github.johnbr.fflyahoo.widget.WidgetUpdater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,6 +21,7 @@ class FflApp : Application() {
     val notifier by lazy { Notifier(this, hub, settings, scope) { scheduler } }
     val scheduler by lazy { LiveScheduler(this) }
     val widgets by lazy { WidgetUpdater(this, hub, settings, scope) }
+    val updater by lazy { Updater(this, scope) }
 
     override fun onCreate() {
         super.onCreate()

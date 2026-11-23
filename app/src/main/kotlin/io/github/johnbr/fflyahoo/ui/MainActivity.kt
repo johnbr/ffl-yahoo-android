@@ -48,6 +48,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         app.hub.acquire(OWNER)
         app.hub.refreshNow()
+        app.updater.checkIfDue()
     }
 
     override fun onStop() {
