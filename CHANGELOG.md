@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.31.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.30.0...v0.31.0) (2026-11-23)
+
+
+### Features
+
+* update the app from its GitHub releases, in-app ([#112](https://github.com/johnbr/ffl-yahoo-android/issues/112)) ([f21e125](https://github.com/johnbr/ffl-yahoo-android/commit/f21e1250d549ead5aa58514981da69d736a760ba))
+
 ## [0.30.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.29.0...v0.30.0) (2026-11-17)
 
 
