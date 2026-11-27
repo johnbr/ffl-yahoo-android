@@ -26,7 +26,8 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) takeMatchup(intent)
         enableEdgeToEdge()
         setContent {
-            FflTheme {
+            val settings by vm.settings.collectAsStateWithLifecycle()
+            FflTheme(textScale = settings?.textSize?.scale ?: 1f) {
                 Surface { AppRoot(vm) }
             }
         }

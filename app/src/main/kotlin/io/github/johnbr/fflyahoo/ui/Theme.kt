@@ -15,7 +15,9 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.em
 import io.github.johnbr.fflyahoo.core.present.Present
 
@@ -108,8 +110,12 @@ private val Compact: Typography = Typography().let { t ->
     )
 }
 
+/**
+ * [textScale] is the user's text-size setting. It multiplies the system font scale, so every `sp` in the
+ * app — Material's type scale and the many explicit sizes alike — grows or shrinks together.
+ */
 @Composable
-fun FflTheme(content: @Composable () -> Unit) {
+fun FflTheme(textScale: Float = 1f, content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     val context = LocalContext.current
     val scheme = when {
@@ -117,7 +123,11 @@ fun FflTheme(content: @Composable () -> Unit) {
         dark -> DarkScheme
         else -> LightScheme
     }
-    CompositionLocalProvider(LocalFfl provides if (dark) DarkFfl else LightFfl) {
+    val density = LocalDensity.current
+    CompositionLocalProvider(
+        LocalFfl provides if (dark) DarkFfl else LightFfl,
+        LocalDensity provides Density(density.density, density.fontScale * textScale),
+    ) {
         MaterialTheme(colorScheme = scheme, typography = Compact, content = content)
     }
 }
