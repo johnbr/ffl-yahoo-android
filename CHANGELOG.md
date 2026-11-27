@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.32.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.31.0...v0.32.0) (2026-11-27)
+
+
+### Features
+
+* add a text-size setting ([#114](https://github.com/johnbr/ffl-yahoo-android/issues/114)) ([2b03155](https://github.com/johnbr/ffl-yahoo-android/commit/2b03155d0ebf29845965fae7be4ba60f4586ac17))
+
 ## [0.31.0](https://github.com/johnbr/ffl-yahoo-android/compare/v0.30.0...v0.31.0) (2026-11-23)
 
 
