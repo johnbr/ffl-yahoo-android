@@ -58,6 +58,7 @@ import androidx.core.net.toUri
 import io.github.johnbr.fflyahoo.BuildConfig
 import io.github.johnbr.fflyahoo.data.AppSettings
 import io.github.johnbr.fflyahoo.data.LeagueConfig
+import io.github.johnbr.fflyahoo.data.TextSize
 import kotlinx.coroutines.launch
 
 /**
@@ -218,6 +219,19 @@ fun SettingsScreen(vm: MainViewModel, settings: AppSettings, onBack: () -> Unit,
                 SwitchRow("My player scored", settings.notifyMine) { vm.setNotify(mine = it) }
                 SwitchRow("Opponent scored", settings.notifyOpponent) { vm.setNotify(opponent = it) }
                 SwitchRow("Lead changed", settings.notifyLeadChange) { vm.setNotify(leadChange = it) }
+            }
+            HorizontalDivider()
+
+            Section("Text size")
+            TextSize.entries.forEach { size ->
+                Row(
+                    Modifier.fillMaxWidth().selectable(selected = settings.textSize == size, onClick = { vm.setTextSize(size) })
+                        .padding(horizontal = 16.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = settings.textSize == size, onClick = null)
+                    Text(size.label, Modifier.padding(start = 12.dp))
+                }
             }
             HorizontalDivider()
 

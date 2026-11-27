@@ -11,6 +11,7 @@ import io.github.johnbr.fflyahoo.core.engine.LeagueUi
 import io.github.johnbr.fflyahoo.core.seed.Seed
 import io.github.johnbr.fflyahoo.data.AppSettings
 import io.github.johnbr.fflyahoo.data.LeagueConfig
+import io.github.johnbr.fflyahoo.data.TextSize
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -79,6 +80,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setNotify(mine: Boolean? = null, opponent: Boolean? = null, leadChange: Boolean? = null) =
         viewModelScope.launch { app.settings.setNotify(mine, opponent, leadChange) }
+
+    fun setTextSize(size: TextSize) = viewModelScope.launch { app.settings.setTextSize(size) }
 
     fun startLiveNow() = app.scheduler.startNow()
 

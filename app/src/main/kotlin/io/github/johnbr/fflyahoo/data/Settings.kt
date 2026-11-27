@@ -25,6 +25,14 @@ data class LeagueConfig(
     val teamName: String? = null,
 )
 
+/** The app's text size, a multiplier on top of the system font scale. DEFAULT is the size the app always had. */
+enum class TextSize(val label: String, val scale: Float) {
+    SMALLEST("Smallest", 0.8f),
+    SMALLER("Smaller", 0.9f),
+    DEFAULT("Default", 1f),
+    LARGER("Larger", 1.1f),
+}
+
 data class AppSettings(
     val leagues: List<LeagueConfig> = emptyList(),
     val selected: String? = null,
@@ -33,6 +41,7 @@ data class AppSettings(
     val notifyMine: Boolean = true,
     val notifyOpponent: Boolean = true,
     val notifyLeadChange: Boolean = true,
+    val textSize: TextSize = TextSize.DEFAULT,
 ) {
     val selectedLeague: LeagueConfig? get() = leagues.firstOrNull { it.leagueId == selected } ?: leagues.firstOrNull()
 }
@@ -51,6 +60,7 @@ class SettingsStore(private val context: Context) {
         val NOTIFY_MINE = booleanPreferencesKey("notify_mine")
         val NOTIFY_OPPONENT = booleanPreferencesKey("notify_opponent")
         val NOTIFY_LEAD = booleanPreferencesKey("notify_lead")
+        val TEXT_SIZE = stringPreferencesKey("text_size")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { prefs ->
@@ -61,6 +71,7 @@ class SettingsStore(private val context: Context) {
             notifyMine = prefs[Keys.NOTIFY_MINE] ?: true,
             notifyOpponent = prefs[Keys.NOTIFY_OPPONENT] ?: true,
             notifyLeadChange = prefs[Keys.NOTIFY_LEAD] ?: true,
+            textSize = prefs[Keys.TEXT_SIZE]?.let { name -> TextSize.entries.firstOrNull { it.name == name } } ?: TextSize.DEFAULT,
         )
     }
 
@@ -90,6 +101,8 @@ class SettingsStore(private val context: Context) {
         opponent?.let { prefs[Keys.NOTIFY_OPPONENT] = it }
         leadChange?.let { prefs[Keys.NOTIFY_LEAD] = it }
     }
+
+    suspend fun setTextSize(size: TextSize) = context.dataStore.edit { it[Keys.TEXT_SIZE] = size.name }
 
     private fun decode(prefs: Preferences): List<LeagueConfig> =
         prefs[Keys.LEAGUES]?.let { runCatching { json.decodeFromString(leaguesSerializer, it) }.getOrNull() } ?: emptyList()
